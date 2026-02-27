@@ -85,6 +85,11 @@ from experiments.gelu81 import GELU81
 from experiments.gelu82 import GELU82
 from experiments.gelu83 import GELU83
 from experiments.gelu84 import GELU84
+from experiments.gelu85 import GELU85
+from experiments.gelu86 import GELU86
+from experiments.gelu87 import GELU87
+from experiments.gelu88 import GELU88
+from experiments.gelu89 import GELU89
 
 import torch
 import torch.nn as nn
@@ -573,6 +578,12 @@ ALL_EXPERIMENTS = [
     ("gelu82",    GELU82,                                    None),  # input + output combined surprise (sum form, no contrast norm)
     ("gelu83",    GELU83,                                    None),  # perpendicular-deviation surprise: removal of parallel/same-direction component
     ("gelu84",    GELU84,                                    None),  # Mahalanobis/RMS-z surprise: per-channel variance normalized deviation
+    # ── gelu85-89: novel mechanisms pushing past 7% ceiling ──
+    ("gelu85",    GELU85,                                    None),  # fusion: per-channel z-score × asymmetric cosine (gelu80+gelu78 combined)
+    ("gelu86",    GELU86,                                    None),  # within-sequence causal z-score (no cross-batch state, sequence-local novelty)
+    ("gelu87",    GELU87,                                    None),  # per-channel dual-sided sparse gate (novel channels amplified, familiar suppressed)
+    ("gelu88",    GELU88,                                    None),  # relative surprise: z-score normalized by running mean z-score
+    ("gelu89",    GELU89,                                    None),  # soft channel routing: surprise-driven channel competition via z² softmax
 ]
 
 
