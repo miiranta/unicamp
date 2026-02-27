@@ -90,6 +90,37 @@ from experiments.gelu86 import GELU86
 from experiments.gelu87 import GELU87
 from experiments.gelu88 import GELU88
 from experiments.gelu89 import GELU89
+from experiments.gelu90 import GELU90
+from experiments.gelu91 import GELU91
+from experiments.gelu92 import GELU92
+from experiments.gelu93 import GELU93
+from experiments.gelu94 import GELU94
+from experiments.gelu95 import GELU95
+from experiments.gelu96 import GELU96
+from experiments.gelu97 import GELU97
+from experiments.gelu98 import GELU98
+from experiments.gelu99 import GELU99
+from experiments.gelu100 import GELU100
+from experiments.gelu101 import GELU101
+from experiments.gelu102 import GELU102
+from experiments.gelu103 import GELU103
+from experiments.gelu104 import GELU104
+from experiments.gelu105 import GELU105
+from experiments.gelu106 import GELU106
+from experiments.gelu107 import GELU107
+from experiments.gelu108 import GELU108
+from experiments.gelu109 import GELU109
+from experiments.gelu110 import GELU110
+from experiments.gelu111 import GELU111
+from experiments.gelu112 import GELU112
+from experiments.gelu113 import GELU113
+from experiments.gelu114 import GELU114
+from experiments.gelu115 import GELU115
+from experiments.gelu116 import GELU116
+from experiments.gelu117 import GELU117
+from experiments.gelu118 import GELU118
+from experiments.gelu119 import GELU119
+from experiments.gelu120 import GELU120
 
 import torch
 import torch.nn as nn
@@ -417,10 +448,14 @@ class TransformerLM(nn.Module):
         self.embed   = nn.Embedding(vocab_size, cfg.D_MODEL)
         self.pos_enc = PositionalEncoding(cfg.D_MODEL, cfg.DROPOUT)
 
+        try:
+            _act = activation_cls(cfg.D_FF)
+        except TypeError:
+            _act = activation_cls()
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=cfg.D_MODEL, nhead=cfg.N_HEADS,
             dim_feedforward=cfg.D_FF, dropout=cfg.DROPOUT,
-            activation=activation_cls(), batch_first=True
+            activation=_act, batch_first=True
         )
         self.transformer = nn.TransformerEncoder(
             encoder_layer, num_layers=cfg.N_LAYERS
@@ -584,6 +619,42 @@ ALL_EXPERIMENTS = [
     ("gelu87",    GELU87,                                    None),  # per-channel dual-sided sparse gate (novel channels amplified, familiar suppressed)
     ("gelu88",    GELU88,                                    None),  # relative surprise: z-score normalized by running mean z-score
     ("gelu89",    GELU89,                                    None),  # soft channel routing: surprise-driven channel competition via z² softmax
+    # ── gelu90-94: fundamentally different mechanisms (pre-GELU gating, stateless, competition) ──
+    ("gelu90",    GELU90,                                    None),  # pre-GELU gate: GELU(x×gate) — changes nonlinearity regime for novel tokens
+    ("gelu91",    GELU91,                                    None),  # stateless I/O coherence gate: 1-cosine(x, GELU(x)) — amplify nonlinear activations
+    ("gelu92",    GELU92,                                    None),  # per-channel inverse activity gate: IDF-style rare channel amplification
+    ("gelu93",    GELU93,                                    None),  # dual-timescale variance burst: fast/slow EMA ratio — surprise burst detector
+    ("gelu94",    GELU94,                                    None),  # softmax-temperature channel competition: KWTA soft sparsification
+    # ── gelu95-96: max-channel z-score + per-channel pre-GELU ──
+    ("gelu95",    GELU95,                                    None),  # logsumexp smooth-max z-score gate: learns mean↔max aggregation (single outlier sensitivity)
+    ("gelu96",    GELU96,                                    None),  # per-channel pre-GELU gate: GELU(x×gate_d) — strongest novelty amplification
+    # ── gelu97-100: richer z-score aggregation + prototype memory ──
+    ("gelu97",    GELU97,                                    None),  # channel-attention z-score: learned per-channel softmax weighting of |z_d|
+    ("gelu98",    GELU98,                                    None),  # post-GELU activation z-score: familiarity in activation space not input space
+    ("gelu99",    GELU99,                                    None),  # signed asymmetric gate: separate w_up/w_dn for positive vs negative surprise
+    ("gelu100",   GELU100,                                   None),  # prototype memory gate: K=4 EMA prototypes, novelty = cosine dist to nearest
+    # ── gelu101-110: robust stats, position-aware, top-K, batch-relative, entropy ──
+    ("gelu101",   GELU101,                                   None),  # MAD z-score: median abs deviation instead of std for robust familiarity
+    ("gelu102",   GELU102,                                   None),  # position-aware EMA: 64 independent per-position EMA buffers
+    ("gelu103",   GELU103,                                   None),  # top-K channel z-score: mean of 16 highest |z_d| not all D
+    ("gelu104",   GELU104,                                   None),  # intra-batch novelty: stateless batch-norm style z-score gate
+    ("gelu105",   GELU105,                                   None),  # pre-GELU gate + hard clamp: clamp(x×gate, -c, +c) controls nonlinearity zone
+    ("gelu106",   GELU106,                                   None),  # exponential surprise: exp(sigma*mean|z|)-1 for heavy-tailed novelty
+    ("gelu107",   GELU107,                                   None),  # fractal multi-scale EMA: 3 timescales (fast/med/slow) combined
+    ("gelu108",   GELU108,                                   None),  # residual deviation gate: novelty = how large is deviation from running stream
+    ("gelu109",   GELU109,                                   None),  # second-order drift gate: measures how fast EMA is changing (acceleration)
+    ("gelu110",   GELU110,                                   None),  # entropy gate: low-entropy (peaked) tokens are novel, high-entropy are familiar
+    # ── gelu111-118: geometric, structural, and additive approaches ──
+    ("gelu111",   GELU111,                                   None),  # neighbor-contrast gate: amplify tokens that differ from adjacent context
+    ("gelu112",   GELU112,                                   None),  # variance spike gate: amplify tokens with unusual internal spread across D
+    ("gelu113",   GELU113,                                   None),  # RMS energy gate: simplest amplitude-relative-to-history novelty
+    ("gelu114",   GELU114,                                   None),  # seq coherence gate: LOO cosine distance to sequence mean context
+    ("gelu115",   GELU115,                                   None),  # sparse code gate: amplify when rare channels fire (IDF over channels)
+    ("gelu116",   GELU116,                                   None),  # asymmetric decay: fast EMA for first D/2, slow for rest (mixed timescales)
+    ("gelu117",   GELU117,                                   None),  # prediction-error gate: total energy of residual from EMA prediction
+    ("gelu118",   GELU118,                                   None),  # additive GELU shift: bias = alpha*surp changes nonlinearity operating point
+    ("gelu119",   GELU119,                                   None),  # gated-residual blend: familiar=identity, novel=GELU(x) via learned alpha blend
+    ("gelu120",   GELU120,                                   None),  # token-adaptive Swish: sharpness = 1+w*surp, novel tokens get sharper activation
 ]
 
 
