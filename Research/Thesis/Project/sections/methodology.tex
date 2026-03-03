@@ -1,3 +1,37 @@
 \section{Methodology}
 
-    ...
+    \subsection{Theoretical Framework}
+    
+        A neuron performs a transformation on its input to produce an output:
+        \begin{equation}
+            \mathbf{y} = f(\mathbf{x})
+        \end{equation}
+        where $\mathbf{x} \in \mathbb{R}^{n}$ is the input vector and $\mathbf{y} \in \mathbb{R}^{m}$ is the output vector.
+
+        The neuron computation relies on three key components:
+        \begin{itemize}
+            \item \textbf{Activation Function} $g(\cdot)$: A non-linear function applied element-wise to the input (e.g., ReLU, Sigmoid, GELU).
+            \item \textbf{Similarity Function} $s(\cdot)$: Measures the similarity between the current input $\mathbf{x}$ and a stored context vector $\mathbf{c}$.
+            \item \textbf{Depletion Function} $m(\cdot)$: Modulates the neuron output based on a memory-driven gating signal.
+        \end{itemize}
+
+        The following models are considered:
+
+        \begin{tcolorbox}[colback=blue!5!white, colframe=blue!40!black, boxrule=0.8pt, arc=4pt, title=\textbf{Standard Computation}, fonttitle=\normalsize]
+            In standard neural networks, the neuron output is computed as:
+            \begin{equation}
+                f(\mathbf{x}) = g(\mathbf{x})
+            \end{equation}
+        \end{tcolorbox}
+
+        \begin{tcolorbox}[colback=green!5!white, colframe=green!40!black, boxrule=0.8pt, arc=4pt, title=\textbf{Proposed Enhanced Model}, fonttitle=\normalsize]
+            We propose an enhanced neuron model that incorporates memory and depletion mechanisms:
+            \begin{equation}
+                f(\mathbf{x}) = m\left(s(\mathbf{x}, \mathbf{c}), g(\mathbf{x})\right)
+            \end{equation}
+            This formulation allows neurons to exhibit memory-dependent behavior and resource-aware computation.
+        \end{tcolorbox}
+
+
+        
+
