@@ -54,7 +54,7 @@ import torch.nn.functional as F
 class GELU24(nn.Module):
     """Z-Score Calibrated Familiarity Suppression."""
 
-    def __init__(self, ema_decay: float = 0.9):
+    def __init__(self, d_ff: int = 1024, ema_decay: float = 0.9):
         super().__init__()
         self._ema:     torch.Tensor = None   # (D,) prototype vector
         self._sim_mu:  torch.Tensor = None   # scalar: running mean of cosine similarities

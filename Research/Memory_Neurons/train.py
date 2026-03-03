@@ -121,6 +121,96 @@ from experiments.gelu117 import GELU117
 from experiments.gelu118 import GELU118
 from experiments.gelu119 import GELU119
 from experiments.gelu120 import GELU120
+from experiments.gelu121 import GELU121
+from experiments.gelu122 import GELU122
+from experiments.gelu123 import GELU123
+from experiments.gelu124 import GELU124
+from experiments.gelu125 import GELU125
+from experiments.gelu126 import GELU126
+from experiments.gelu127 import GELU127
+from experiments.gelu128 import GELU128
+from experiments.gelu129 import GELU129
+from experiments.gelu130 import GELU130
+from experiments.gelu131 import GELU131
+from experiments.gelu132 import GELU132
+from experiments.gelu133 import GELU133
+from experiments.gelu134 import GELU134
+from experiments.gelu135 import GELU135
+from experiments.gelu136 import GELU136
+from experiments.gelu137 import GELU137
+from experiments.gelu138 import GELU138
+from experiments.gelu139 import GELU139
+from experiments.gelu140 import GELU140
+from experiments.gelu141 import GELU141
+from experiments.gelu142 import GELU142
+from experiments.gelu143 import GELU143
+from experiments.gelu144 import GELU144
+from experiments.gelu145 import GELU145
+from experiments.gelu146 import GELU146
+from experiments.gelu147 import GELU147
+from experiments.gelu148 import GELU148
+from experiments.gelu149 import GELU149
+from experiments.gelu150 import GELU150
+from experiments.gelu151 import GELU151
+from experiments.gelu152 import GELU152
+from experiments.gelu153 import GELU153
+from experiments.gelu154 import GELU154
+from experiments.gelu155 import GELU155
+from experiments.gelu156 import GELU156
+from experiments.gelu157 import GELU157
+from experiments.gelu158 import GELU158
+from experiments.gelu159 import GELU159
+from experiments.gelu160 import GELU160
+from experiments.gelu161 import GELU161
+from experiments.gelu162 import GELU162
+from experiments.gelu163 import GELU163
+from experiments.gelu164 import GELU164
+from experiments.gelu165 import GELU165
+from experiments.gelu166 import GELU166
+from experiments.gelu167 import GELU167
+from experiments.gelu168 import GELU168
+from experiments.gelu169 import GELU169
+from experiments.gelu170 import GELU170
+from experiments.gelu171 import GELU171
+from experiments.gelu172 import GELU172
+from experiments.gelu173 import GELU173
+from experiments.gelu174 import GELU174
+from experiments.gelu175 import GELU175
+from experiments.gelu176 import GELU176
+from experiments.gelu177 import GELU177
+from experiments.gelu178 import GELU178
+from experiments.gelu179 import GELU179
+from experiments.gelu180 import GELU180
+from experiments.gelu181 import GELU181
+from experiments.gelu182 import GELU182
+from experiments.gelu183 import GELU183
+from experiments.gelu184 import GELU184
+from experiments.gelu185 import GELU185
+from experiments.gelu186 import GELU186
+from experiments.gelu187 import GELU187
+from experiments.gelu188 import GELU188
+from experiments.gelu189 import GELU189
+from experiments.gelu190 import GELU190
+from experiments.gelu191 import GELU191
+from experiments.gelu192 import GELU192
+from experiments.gelu193 import GELU193
+from experiments.gelu194 import GELU194
+from experiments.gelu195 import GELU195
+from experiments.gelu196 import GELU196
+from experiments.gelu197 import GELU197
+from experiments.gelu198 import GELU198
+from experiments.gelu199 import GELU199
+from experiments.gelu200 import GELU200
+from experiments.gelu201 import GELU201
+from experiments.gelu202 import GELU202
+from experiments.gelu203 import GELU203
+from experiments.gelu204 import GELU204
+from experiments.gelu205 import GELU205
+from experiments.gelu206 import GELU206
+from experiments.gelu207 import GELU207
+from experiments.gelu208 import GELU208
+from experiments.gelu209 import GELU209
+from experiments.gelu210 import GELU210
 
 import torch
 import torch.nn as nn
@@ -450,7 +540,7 @@ class TransformerLM(nn.Module):
 
         try:
             _act = activation_cls(cfg.D_FF)
-        except TypeError:
+        except (TypeError, ValueError, OverflowError):
             _act = activation_cls()
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=cfg.D_MODEL, nhead=cfg.N_HEADS,
@@ -655,6 +745,104 @@ ALL_EXPERIMENTS = [
     ("gelu118",   GELU118,                                   None),  # additive GELU shift: bias = alpha*surp changes nonlinearity operating point
     ("gelu119",   GELU119,                                   None),  # gated-residual blend: familiar=identity, novel=GELU(x) via learned alpha blend
     ("gelu120",   GELU120,                                   None),  # token-adaptive Swish: sharpness = 1+w*surp, novel tokens get sharper activation
+    # ── gelu121-125: new creative mechanisms pushing toward 15% PPL reduction ──
+    ("gelu121",   GELU121,                                   None),  # intra-sequence token uniqueness: amplify tokens with no similar neighbor in context
+    ("gelu122",   functools.partial(GELU122, n_proto=16),    None),  # gradient-trained K=16 prototype dict: backprop-optimized familiarity representation
+    ("gelu123",   GELU123,                                   None),  # tiny learned bottleneck gate D→8→D: gradient-trained per-channel modulation
+    ("gelu124",   GELU124,                                   None),  # predictive EMA with low-rank transform: amplify prediction error per token
+    ("gelu125",   GELU125,                                   None),  # per-channel dual-timescale: z-score (slow) + variance burst (fast/slow ratio)
+    # ── gelu126-130: causal sequence-aware and dual-reference mechanisms ──
+    ("gelu126",   GELU126,                                   None),  # causal within-sequence EMA scan: per-channel novelty within current context
+    ("gelu127",   GELU127,                                   None),  # per-channel kurtosis gate: heavy-tailed channels amplified (rare=specific=novel)
+    ("gelu128",   GELU128,                                   None),  # causal attention context gate: parameter-free intra-FF causal self-attention novelty
+    ("gelu129",   GELU129,                                   None),  # dual-reference: cross-batch EMA z-score + within-sequence causal scan (additive)
+    ("gelu130",   GELU130,                                   None),  # dual-mode gate: within-seq pre-GELU gate x cross-batch post-GELU gate
+    # ── gelu131-135: gelu80 ablations — per-channel params, MAD, pre-gating, signed ──
+    ("gelu131",   GELU131,                                   None),  # per-channel sigma: D-dimensional sensitivity (one per channel)
+    ("gelu132",   GELU132,                                   None),  # per-channel alpha: D-dimensional amplification (one per channel)
+    ("gelu133",   GELU133,                                   None),  # MAD-based robust z-score (EMA of |x - mean| instead of variance)
+    ("gelu134",   GELU134,                                   None),  # pre-GELU gate: gates input to GELU instead of output (operating point shift)
+    ("gelu135",   GELU135,                                   None),  # signed z-score: separate alpha for positive vs negative deviations
+    # ── gelu136-140: advanced z-score aggregation and meta-adaptation ──
+    ("gelu136",   GELU136,                                   None),  # learned channel weighting: softmax(w_d)*|z_d| aggregation (learn which channels signal novelty)
+    ("gelu137",   GELU137,                                   None),  # second-order z-score: meta-surprise = z-score of |z| itself (channels that are unusually surprising)
+    ("gelu138",   GELU138,                                   None),  # intra-batch variance gate: stateless, var across batch signals context-specific novelty
+    ("gelu139",   GELU139,                                   None),  # concentrated surprise: log1p(mean z^2) favors single large deviation over many small ones
+    ("gelu140",   GELU140,                                   None),  # homeostatic gate: normalizes gate by its own EMA, preserving relative but not absolute novelty
+    # ── gelu141-145: sparse-surprise, cross-channel, multi-timescale, counting ──
+    ("gelu141",   GELU141,                                   None),  # random-projection z-score: R=32 projections capture cross-channel correlations cheaply
+    ("gelu142",   GELU142,                                   None),  # count-based surprise: fraction of channels with |z|>threshold (coherent vs diffuse novelty)
+    ("gelu143",   GELU143,                                   None),  # dual-timescale blend: fast(0.9) + slow(0.999) EMA z-score with learned mixture weight
+    ("gelu144",   GELU144,                                   None),  # soft top-K: only 32 most surprising channels drive gate (avoids dilution by normal channels)
+    ("gelu145",   GELU145,                                   None),  # SNR of surprise: mean|z| / std|z| — gate on coherent structural surprise, not diffuse noise
+    # ── gelu146-150: contrastive, sparse-coding, velocity, grouping, MI proxy ──
+    ("gelu146",   GELU146,                                   None),  # contrastive self-ID: InfoNCE uniqueness score — unique tokens in batch are novel
+    ("gelu147",   GELU147,                                   None),  # sparse-threshold residual: EMA adaptive soft-threshold, residual energy = novelty
+    ("gelu148",   GELU148,                                   None),  # EMA velocity gate: how fast is concept space moving? Fast shift = novel regime
+    ("gelu149",   GELU149,                                   None),  # channel-group z-score: G=32 groups of K=32 channels, group-pooled statistics
+    ("gelu150",   GELU150,                                   None),  # channel-isotropy gate: channels uncorrelated with global mean carry independent/novel info
+    ("gelu151",   GELU151,                                   None),  # EMA prototype bank K=16: VQ-style novelty = distance to nearest learned cluster centroid
+    ("gelu152",   GELU152,                                   None),  # lag-1 temporal autocorrelation: low-autocorr channels = rapidly-changing = novel (stateless)
+    ("gelu153",   GELU153,                                   None),  # per-channel excess kurtosis: heavy-tailed channels (rare large spikes) = novel
+    ("gelu154",   GELU154,                                   None),  # FFT spectral HF ratio: high-frequency sequence content = novel (stateless)
+    ("gelu155",   GELU155,                                   None),  # random pairwise batch diversity: spread-out batches = novel regime
+    ("gelu156",   GELU156,                                   None),  # within-batch PCA residual: energy in non-dominant directions = novel (stateless)
+    ("gelu157",   GELU157,                                   None),  # sign consensus voting: channel sign split across batch = novel (stateless)
+    ("gelu158",   GELU158,                                   None),  # momentum predictor: EMA mean + velocity as first-order Kalman predictor, error = novelty
+    ("gelu159",   GELU159,                                   None),  # tiny GRU surprise integrator: causal accumulation of per-token z-score surprise
+    ("gelu160",   GELU160,                                   None),  # random Fourier feature RBF novelty: nonlinear kernel distance from EMA centroid
+    ("gelu161",   GELU161,                                   None),  # non-parametric rank extremeness: double-argsort percentile, outlier = novel (stateless)
+    ("gelu162",   GELU162,                                   None),  # within-sequence position diversity: variance of T positions in D-space (EMA-normalized)
+    ("gelu163",   GELU163,                                   None),  # channel sign flip rate: channels pointing against EMA history = novel regime
+    ("gelu164",   GELU164,                                   None),  # channel-pair cross-correlation surprise: K=64 random pairs, EMA of cross-moments
+    ("gelu165",   GELU165,                                   None),  # IQR extremeness: Tukey fence outliers per channel = novel tokens (stateless)
+    ("gelu166",   GELU166,                                   None),  # per-channel skewness-adjusted z-score: thin-tail deviations against historical skew = novel
+    ("gelu167",   GELU167,                                   None),  # per-channel platykurtosis: flat/bimodal distribution across channels = exploring multiple modes
+    ("gelu168",   GELU168,                                   None),  # per-channel batch Gini coefficient: highly selective channels fire only for rare tokens = novel
+    ("gelu169",   GELU169,                                   None),  # angular velocity gate: rate of direction change in activation space = novel trajectory
+    ("gelu170",   GELU170,                                   None),  # log-space z-score: multiplicative surprise in activation magnitude (log-normal model)
+    ("gelu171",   GELU171,                                   None),  # per-channel adaptive EMA decay: each channel learns its own memory timescale
+    ("gelu172",   GELU172,                                   None),  # dual-reference z-score: global EMA + sequence-local surprise combined
+    ("gelu173",   GELU173,                                   None),  # spectral concentration gate: top singular value / Frobenius norm ratio
+    ("gelu174",   GELU174,                                   None),  # Hebbian correlation deviation: unusual x*GELU(x) product = novel neuron usage mode
+    ("gelu175",   GELU175,                                   None),  # vote-balance gate: per-channel directional fatigue, undecided neurons = novel
+    # ── gelu176-180: dual-reference, random-projection Mahalanobis, learned aggregation, three-signal fusion, rank ──
+    ("gelu176",   GELU176,                                   None),  # multiplicative dual-reference z-score: product of global EMA × within-seq causal z-score
+    ("gelu177",   GELU177,                                   None),  # random-projection Mahalanobis: K=64 projections capture cross-channel covariance surprise
+    ("gelu178",   GELU178,                                   None),  # learned MLP aggregation of |z| vector: trains which z-patterns indicate true novelty
+    ("gelu179",   GELU179,                                   None),  # three-signal orthogonal fusion: global z-score × variance burst × within-seq causal z-score
+    ("gelu180",   GELU180,                                   None),  # causal rank-normalized surprise: distribution-free per-channel novelty via exact rank percentiles
+    # ── gelu181-185: vector gates, per-position EMA, dual-space, nearest-neighbor, channel groups ──
+    ("gelu181",   GELU181,                                   None),  # per-channel SIGNED z-score vector gate: D-dimensional gate (not scalar), amplify high-z, suppress low-z
+    ("gelu182",   GELU182,                                   None),  # per-position EMA z-score: separate mu/sigma per seq position t, positional-conditional familiarity
+    ("gelu183",   GELU183,                                   None),  # dual-space z-score product: input-space novelty x output-space novelty (must be novel in both)
+    ("gelu184",   GELU184,                                   None),  # within-seq nearest-neighbor gate: novelty = distance to closest token in current context
+    ("gelu185",   GELU185,                                   None),  # channel-group gate G=8: 8 independent group-level cosine+z-score gates on channel slices
+    ("gelu186",   GELU186,                                   None),  # per-channel absolute vector gate: always amplify unusual channels (gate ≥ 1), never suppress
+    ("gelu187",   GELU187,                                   None),  # learned per-channel alpha_d weights: gradient-trained channel importance for z-score aggregation
+    ("gelu188",   GELU188,                                   None),  # relative surprise: |z_d|/EMA(|z_d|) excess above historical baseline noisiness
+    ("gelu189",   GELU189,                                   None),  # sparse top-K vector gate K=16: only modulate K most surprising channels, rest pass-through
+    ("gelu190",   GELU190,                                   None),  # asymmetric bidirectional: separate beta_up (excitatory) and beta_dn (inhibitory) per-channel arms
+    ("gelu191",   GELU191,                                   None),  # dual-speed EMA: max surprise across fast (recent) and slow (long-term) timescales
+    ("gelu192",   GELU192,                                   None),  # output-magnitude-weighted z-score: surprise weighted toward active GELU channels
+    ("gelu193",   GELU193,                                   None),  # joint input-output deviation product: per-channel gate based on z_in × z_out
+    ("gelu194",   GELU194,                                   None),  # anti-trend surprise: amplify tokens that deviate against direction of EMA velocity
+    ("gelu195",   GELU195,                                   None),  # log-scale multiplicative surprise: deviation measured in log space (octaves from mean)
+    ("gelu196",   GELU196,                                   None),  # pre-GELU input modulation: per-channel z-score scales x before nonlinearity (revives threshold channels)
+    ("gelu197",   GELU197,                                   None),  # variance-of-z-scores: surp = tanh(σ1×mean|z| + σ2×std_z), captures selective channel reshaping
+    ("gelu198",   GELU198,                                   None),  # output-space z-score vector gate: tracks GELU output statistics instead of input
+    ("gelu199",   GELU199,                                   None),  # surprise-boosted residual: GELU(x) + α×surp×(GELU(x)−ema_out_vec)/ema_rms, additive not multiplicative
+    ("gelu200",   GELU200,                                   None),  # surprise momentum/habituation: ReLU(surp - surp_ema), fires only when above recent surprise baseline
+    ("gelu201",   GELU201,                                   None),  # sparse top-K=16 on OUTPUT z-scores: select K most unusual output channels, gate signed
+    ("gelu202",   GELU202,                                   None),  # sparse top-K=16 asymmetric: separate beta_up/beta_dn for excitatory/inhibitory arms on K channels
+    ("gelu203",   GELU203,                                   None),  # sparse top-K=32 signed (K ablation 2x gelu189): broader coverage test
+    ("gelu204",   GELU204,                                   None),  # sparse top-K=8 signed (K ablation 0.5x gelu189): ultra-sparse test
+    ("gelu205",   GELU205,                                   None),  # dual-space intersection gate: channels in top-64 by BOTH |z_in| AND |z_out|
+    ("gelu206",   GELU206,                                   None),  # sparse K=16 absolute gate: amplify-only (floor=1), no suppression — ablates sign in gelu189
+    ("gelu207",   GELU207,                                   None),  # sparse dual gate: amplify top-K=16 novel + suppress bottom-K=16 familiar (learned scalar β_fam)
+    ("gelu208",   GELU208,                                   None),  # SiLU base + sparse K=16 gate: same mechanism as gelu189 but SiLU(x)=x*σ(x) instead of GELU
+    ("gelu209",   GELU209,                                   None),  # memory-normalized GELU: GELU((x-ema_mean)/ema_std)*scale — no gating, pure normalization
+    ("gelu210",   GELU210,                                   None),  # surprise-shifted SiLU: (x+β*tanh(γ*z))*σ(x+β*tanh(γ*z)) — shift SiLU threshold per-channel
 ]
 
 
@@ -775,16 +963,30 @@ def run_experiment(exp_name, activation_cls, vocab, device, early_stop=None):
 
         print()
 
-    # Test
-    print("── Test ──")
-    # model.load_state_dict(torch.load(checkpoint, map_location=device))
-    te_loss, te_ppl = run_epoch(model, test_loader, criterion, optimizer, device, Config, train=False)
-    print(f"  test loss {te_loss:.4f} | ppl {te_ppl:.2f}\n")
+    # Test – run 3 times in sequence to observe state-adaptive improvement.
+    # EMA state is updated on every forward pass (no_grad blocks inside modules),
+    # so each subsequent run sees a better-calibrated EMA baseline.
+    print("── Test (3 sequential passes) ──")
+    test_results = []
+    for test_run in range(1, 4):
+        te_loss, te_ppl = run_epoch(model, test_loader, criterion, optimizer, device, Config, train=False)
+        print(f"  run {test_run}: loss {te_loss:.4f} | ppl {te_ppl:.2f}")
+        test_results.append((te_loss, te_ppl))
+
+    delta_12 = test_results[0][1] - test_results[1][1]
+    delta_13 = test_results[0][1] - test_results[2][1]
+    print(f"  Δppl 1→2: {delta_12:+.2f}  |  Δppl 1→3: {delta_13:+.2f}\n")
 
     with open(os.path.join(output_dir, "test_metrics.csv"), "w", newline="") as f:
         writer = csv.writer(f)
-        writer.writerow(["test_loss", "test_ppl"])
-        writer.writerow([te_loss, te_ppl])
+        writer.writerow(["test_loss_1", "test_ppl_1",
+                         "test_loss_2", "test_ppl_2",
+                         "test_loss_3", "test_ppl_3"])
+        writer.writerow([
+            test_results[0][0], test_results[0][1],
+            test_results[1][0], test_results[1][1],
+            test_results[2][0], test_results[2][1],
+        ])
 
 
 # ─────────────────────────────────────────────

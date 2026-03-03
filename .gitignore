@@ -3,3 +3,19 @@
 /__pycache__/
 
 *.pt
+*.gpu_lock_*
+
+# Ignore latex auxiliary and output files
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.blg
+*.bbl
+*.lot
+*.lof
+*.fdb_latexmk
+*.fls
+
+

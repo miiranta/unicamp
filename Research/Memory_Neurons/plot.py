@@ -88,7 +88,10 @@ fig.savefig(path, dpi=150, bbox_inches="tight")
 plt.close(fig)
 print(f"Saved: {path}")
 
-# ── Load test metrics ─────────────────────────────────────────────────
+# ── Load test metrics ────────────────────────────────────────────────
+# Supports two formats:
+#   old: test_loss, test_ppl          (single test run)
+#   new: test_loss_1, test_ppl_1, … test_ppl_3  (3 sequential test runs)
 test_records = []
 for exp_name in exp_names_sorted:
     test_path = os.path.join(OUTPUT_DIR, exp_name, "test_metrics.csv")
@@ -97,6 +100,21 @@ for exp_name in exp_names_sorted:
     df = pd.read_csv(test_path)
     df["experiment"] = exp_name
     df["label"]      = pretty(exp_name)
+
+    # Normalise to unified column names
+    if "test_ppl_1" in df.columns:
+        # New 3-run format
+        df["test_loss"] = df["test_loss_1"]
+        df["test_ppl"]  = df["test_ppl_1"]
+    else:
+        # Old single-run format: fill run-2/3 as NaN
+        df["test_loss_1"] = df["test_loss"]
+        df["test_ppl_1"]  = df["test_ppl"]
+        df["test_loss_2"] = float("nan")
+        df["test_ppl_2"]  = float("nan")
+        df["test_loss_3"] = float("nan")
+        df["test_ppl_3"]  = float("nan")
+
     test_records.append(df)
 
 if not test_records:
@@ -104,7 +122,11 @@ if not test_records:
     exit(0)
 
 test_data = pd.concat(test_records, ignore_index=True)[
-    ["experiment", "label", "test_loss", "test_ppl"]
+    ["experiment", "label",
+     "test_loss",   "test_ppl",
+     "test_loss_1", "test_ppl_1",
+     "test_loss_2", "test_ppl_2",
+     "test_loss_3", "test_ppl_3"]
 ].copy()
 
 control_ppl  = test_data.loc[test_data["experiment"] == "control", "test_ppl"].values[0]
@@ -212,6 +234,83 @@ path = os.path.join(PLOTS_DIR, "test_results.png")
 fig.savefig(path, dpi=150, bbox_inches="tight")
 plt.close(fig)
 print(f"Saved: {path}")
+
+# ── Sequential-adaptation improvement chart ───────────────────────────
+# Only experiments that have the new 3-run format (test_ppl_2 is not NaN)
+adapt_df = test_data.dropna(subset=["test_ppl_2", "test_ppl_3"]).copy()
+
+if len(adapt_df) > 0:
+    adapt_df["delta_1to2"] = adapt_df["test_ppl_1"] - adapt_df["test_ppl_2"]  # +ve = improved
+    adapt_df["delta_1to3"] = adapt_df["test_ppl_1"] - adapt_df["test_ppl_3"]  # +ve = improved
+
+    # Sort by 1→3 improvement (most adaptive first)
+    adapt_df = adapt_df.sort_values("delta_1to3", ascending=False).reset_index(drop=True)
+
+    n = len(adapt_df)
+    fig, axes = plt.subplots(1, 2, figsize=(16, max(5, 0.45 * n + 2)))
+    fig.suptitle("Sequential Test-Pass Adaptation\n"
+                 "(Δ PPL = pass-1 PPL − pass-N PPL;  positive = improvement)",
+                 fontsize=13, fontweight="bold")
+
+    green_pos = "#2ca02c"
+    red_neg   = "#d62728"
+
+    for ax, col, title in [
+        (axes[0], "delta_1to2", "Improvement:  Pass 1 → Pass 2"),
+        (axes[1], "delta_1to3", "Improvement:  Pass 1 → Pass 3"),
+    ]:
+        vals   = adapt_df[col].values
+        clrs   = [green_pos if v >= 0 else red_neg for v in vals]
+        bars   = ax.barh(adapt_df["label"], vals, color=clrs, edgecolor="white")
+        ax.axvline(0, color="black", linewidth=0.8, linestyle="-")
+        ax.set_title(title, fontsize=11, fontweight="bold")
+        ax.set_xlabel("ΔPPL (positive = better on pass N vs pass 1)")
+        ax.invert_yaxis()
+        span = max(abs(vals).max(), 0.1)
+        for bar, v in zip(bars, vals):
+            ha  = "left"  if v >= 0 else "right"
+            off = 0.02 * span if v >= 0 else -0.02 * span
+            ax.text(v + off, bar.get_y() + bar.get_height() / 2,
+                    f"{v:+.2f}", va="center", ha=ha, fontsize=8)
+        ax.set_xlim(-span * 1.35, span * 1.35)
+
+    legend_handles = [
+        Patch(color=green_pos, label="Improved (PPL ↓)"),
+        Patch(color=red_neg,   label="Degraded (PPL ↑)"),
+    ]
+    fig.legend(handles=legend_handles, loc="lower center", ncol=2,
+               fontsize=9, bbox_to_anchor=(0.5, -0.02))
+    plt.tight_layout(rect=[0, 0.04, 1, 1])
+    path = os.path.join(PLOTS_DIR, "sequential_adaptation.png")
+    fig.savefig(path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Saved: {path}")
+
+    # Save adaptation data to CSV
+    adapt_csv = os.path.join(PLOTS_DIR, "adaptation_results.csv")
+    adapt_df[["experiment", "label",
+              "test_ppl_1", "test_ppl_2", "test_ppl_3",
+              "delta_1to2", "delta_1to3"]].to_csv(adapt_csv, index=False)
+    print(f"Saved adaptation data: {adapt_csv}")
+
+    # Print table
+    print("\n" + "="*70)
+    print("  SEQUENTIAL TEST ADAPTATION  (Δ = pass-1 PPL − pass-N PPL)")
+    print("="*70)
+    print(f"  {'Experiment':<18} {'PPL-1':>8} {'PPL-2':>8} {'PPL-3':>8} "
+          f"{'Δ1→2':>8} {'Δ1→3':>8}")
+    print("  " + "-"*64)
+    for _, row in adapt_df.iterrows():
+        marker = " ◀" if row["delta_1to3"] == adapt_df["delta_1to3"].max() else ""
+        print(f"  {row['label']:<18} {row['test_ppl_1']:>8.2f} {row['test_ppl_2']:>8.2f} "
+              f"{row['test_ppl_3']:>8.2f} {row['delta_1to2']:>+8.2f} "
+              f"{row['delta_1to3']:>+8.2f}{marker}")
+    print("="*70)
+    best_adapt = adapt_df.loc[adapt_df["delta_1to3"].idxmax()]
+    print(f"\n  Most adaptive: {best_adapt['label']}  "
+          f"(ΔPPL 1→3 = {best_adapt['delta_1to3']:+.2f})\n")
+else:
+    print("No 3-run test data found yet; skipping sequential adaptation plot.")
 
 # ── Parameter count comparison ────────────────────────────────────────
 param_records = []

@@ -48,7 +48,7 @@ import torch.nn.functional as F
 class GELU50(nn.Module):
     """K-prototype orthogonal subspace suppression."""
 
-    def __init__(self, n_prototypes: int = 8, ema_decay: float = 0.95):
+    def __init__(self, d_model: int = None, n_prototypes: int = 8, ema_decay: float = 0.95):
         super().__init__()
         self._K = n_prototypes
         self._protos: torch.Tensor = None   # (K, D)
