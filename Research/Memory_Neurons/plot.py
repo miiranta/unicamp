@@ -145,10 +145,10 @@ print(f"Saved test data:     {test_csv}")
 print("\n" + "="*65)
 print("  TEST RESULTS ANALYSIS")
 print("="*65)
-print(f"  {'Experiment':<18} {'Loss':>7} {'PPL':>8} {'ΔPPL':>8} {'Improv%':>9}")
+print(f"  {'Experiment':<18} {'Loss':>7} {'PPL':>8} {'dPPL':>8} {'Improv%':>9}")
 print("  " + "-"*53)
 for _, row in test_data.sort_values("test_ppl").iterrows():
-    marker = " ◀ best" if row["test_ppl"] == test_data["test_ppl"].min() else ""
+    marker = " << best" if row["test_ppl"] == test_data["test_ppl"].min() else ""
     print(f"  {row['label']:<18} {row['test_loss']:>7.4f} {row['test_ppl']:>8.2f}"
           f" {row['ppl_delta']:>+8.2f} {row['ppl_improv%']:>8.1f}%{marker}")
 print("="*65)
@@ -162,7 +162,7 @@ no_attn = test_data[test_data["experiment"].str.contains("gelu2") &
 print(f"\n  Best overall : {best['label']}  "
       f"(PPL {best['test_ppl']:.2f}, {best['ppl_improv%']:.1f}% better than control)")
 print(f"  Avg GELU2    : PPL {gelu2['test_ppl'].mean():.2f}  "
-      f"(Δ {gelu2['test_ppl'].mean() - control_ppl:+.2f} vs control {control_ppl:.2f})")
+      f"(d {gelu2['test_ppl'].mean() - control_ppl:+.2f} vs control {control_ppl:.2f})")
 if len(attn) and len(no_attn):
     # Pair by base name (strip trailing _attn) so mismatched set sizes don't matter
     attn_base    = attn.copy()
@@ -275,8 +275,8 @@ if len(adapt_df) > 0:
         ax.set_xlim(-span * 1.35, span * 1.35)
 
     legend_handles = [
-        Patch(color=green_pos, label="Improved (PPL ↓)"),
-        Patch(color=red_neg,   label="Degraded (PPL ↑)"),
+        Patch(color=green_pos, label="Improved (PPL lower)"),
+        Patch(color=red_neg,   label="Degraded (PPL higher)"),
     ]
     fig.legend(handles=legend_handles, loc="lower center", ncol=2,
                fontsize=9, bbox_to_anchor=(0.5, -0.02))
@@ -295,20 +295,20 @@ if len(adapt_df) > 0:
 
     # Print table
     print("\n" + "="*70)
-    print("  SEQUENTIAL TEST ADAPTATION  (Δ = pass-1 PPL − pass-N PPL)")
+    print("  SEQUENTIAL TEST ADAPTATION  (d = pass-1 PPL - pass-N PPL)")
     print("="*70)
     print(f"  {'Experiment':<18} {'PPL-1':>8} {'PPL-2':>8} {'PPL-3':>8} "
-          f"{'Δ1→2':>8} {'Δ1→3':>8}")
+          f"{'d1->2':>8} {'d1->3':>8}")
     print("  " + "-"*64)
     for _, row in adapt_df.iterrows():
-        marker = " ◀" if row["delta_1to3"] == adapt_df["delta_1to3"].max() else ""
+        marker = " <<" if row["delta_1to3"] == adapt_df["delta_1to3"].max() else ""
         print(f"  {row['label']:<18} {row['test_ppl_1']:>8.2f} {row['test_ppl_2']:>8.2f} "
               f"{row['test_ppl_3']:>8.2f} {row['delta_1to2']:>+8.2f} "
               f"{row['delta_1to3']:>+8.2f}{marker}")
     print("="*70)
     best_adapt = adapt_df.loc[adapt_df["delta_1to3"].idxmax()]
     print(f"\n  Most adaptive: {best_adapt['label']}  "
-          f"(ΔPPL 1→3 = {best_adapt['delta_1to3']:+.2f})\n")
+          f"(dPPL 1->3 = {best_adapt['delta_1to3']:+.2f})\n")
 else:
     print("No 3-run test data found yet; skipping sequential adaptation plot.")
 

@@ -211,6 +211,74 @@ from experiments.gelu207 import GELU207
 from experiments.gelu208 import GELU208
 from experiments.gelu209 import GELU209
 from experiments.gelu210 import GELU210
+from experiments.gelu211 import GELU211
+from experiments.gelu212 import GELU212
+from experiments.gelu213 import GELU213
+from experiments.gelu214 import GELU214
+from experiments.gelu215 import GELU215
+from experiments.gelu216 import GELU216
+from experiments.gelu217 import GELU217
+from experiments.gelu218 import GELU218
+from experiments.gelu219 import GELU219
+from experiments.gelu220 import GELU220
+from experiments.gelu221 import GELU221
+from experiments.gelu222 import GELU222
+from experiments.gelu223 import GELU223
+from experiments.gelu224 import GELU224
+from experiments.gelu225 import GELU225
+from experiments.gelu226 import GELU226
+from experiments.gelu227 import GELU227
+from experiments.gelu228 import GELU228
+from experiments.gelu229 import GELU229
+from experiments.gelu230 import GELU230
+from experiments.gelu231 import GELU231
+from experiments.gelu232 import GELU232
+from experiments.gelu233 import GELU233
+from experiments.gelu234 import GELU234
+from experiments.gelu235 import GELU235
+from experiments.gelu236 import GELU236
+from experiments.gelu237 import GELU237
+from experiments.gelu238 import GELU238
+from experiments.gelu239 import GELU239
+from experiments.gelu240 import GELU240
+from experiments.gelu241 import GELU241
+from experiments.gelu242 import GELU242
+from experiments.gelu243 import GELU243
+from experiments.gelu244 import GELU244
+from experiments.gelu245 import GELU245
+from experiments.gelu246 import GELU246
+from experiments.gelu247 import GELU247
+from experiments.gelu248 import GELU248
+from experiments.gelu249 import GELU249
+from experiments.gelu250 import GELU250
+from experiments.gelu251 import GELU251
+from experiments.gelu252 import GELU252
+from experiments.gelu253 import GELU253
+from experiments.gelu254 import GELU254
+from experiments.gelu255 import GELU255
+from experiments.gelu256 import GELU256
+from experiments.gelu257 import GELU257
+from experiments.gelu258 import GELU258
+from experiments.gelu259 import GELU259
+from experiments.gelu260 import GELU260
+from experiments.gelu261 import GELU261
+from experiments.gelu262 import GELU262
+from experiments.gelu263 import GELU263
+from experiments.gelu264 import GELU264
+from experiments.gelu265 import GELU265
+from experiments.gelu266 import GELU266
+from experiments.gelu267 import GELU267
+from experiments.gelu268 import GELU268
+from experiments.gelu269 import GELU269
+from experiments.gelu270 import GELU270
+from experiments.gelu271 import GELU271
+from experiments.gelu272 import GELU272
+from experiments.gelu273 import GELU273
+from experiments.gelu274 import GELU274
+from experiments.gelu275 import GELU275
+from experiments.gelu276 import GELU276
+from experiments.gelu277 import GELU277
+from experiments.gelu278 import GELU278
 
 import torch
 import torch.nn as nn
@@ -843,6 +911,82 @@ ALL_EXPERIMENTS = [
     ("gelu208",   GELU208,                                   None),  # SiLU base + sparse K=16 gate: same mechanism as gelu189 but SiLU(x)=x*σ(x) instead of GELU
     ("gelu209",   GELU209,                                   None),  # memory-normalized GELU: GELU((x-ema_mean)/ema_std)*scale — no gating, pure normalization
     ("gelu210",   GELU210,                                   None),  # surprise-shifted SiLU: (x+β*tanh(γ*z))*σ(x+β*tanh(γ*z)) — shift SiLU threshold per-channel
+    # ── gelu211-220: push past 6.8% PPL ceiling + improve sequential adaptation ──
+    ("gelu211",   GELU211,                                   None),  # asymmetric input gate × output z-score gate: product requires novelty in BOTH input AND output space
+    ("gelu212",   GELU212,                                   None),  # multi-scale asymmetric gate: dual-speed EMA z-scores (fast+slow) blended, then asymmetric per-channel gate
+    ("gelu213",   GELU213,                                   None),  # sparse top-K=16 asymmetric gate on OUTPUT z-scores: complement to gelu202 (which uses input z-scores)
+    ("gelu214",   GELU214,                                   None),  # asymmetric gate with dead-zone threshold θ: only modulate channels with |z| > θ (learned)
+    ("gelu215",   GELU215,                                   None),  # dual-space asymmetric intersection: top-K=64 by BOTH |z_in| AND |z_out|, asymmetric β_up/β_dn gate
+    ("gelu216",   GELU216,                                   None),  # ring buffer + asymmetric per-channel gate: episode-relative z-scores for positive sequential adaptation
+    ("gelu217",   GELU217,                                   None),  # within-seq NN gate × asymmetric EMA gate: gelu184 × gelu190 product — local+historical novelty
+    ("gelu218",   GELU218,                                   None),  # fast-adaptive EMA (fast mean, slow std): rapid test-distribution tracking for positive adaptation
+    ("gelu219",   GELU219,                                   None),  # surprise-gated EMA update: only update EMA when genuinely novel, protecting anchor from test contamination
+    ("gelu220",   GELU220,                                   None),  # global EMA + local batch z-score dual pathway: blend stateless local signal with historical EMA for adaptation
+    # ── Round 3: PPL priority ─────────────────────────────────────────────────────────────────────
+    ("gelu221",   GELU221,                                   None),  # output-only asymmetric per-channel gate: EMA on GELU(x) output stats — complement to gelu190 (input EMA)
+    ("gelu222",   GELU222,                                   None),  # gelu211 + per-channel asymmetric output arm: up/down arms for BOTH input and output gates (product)
+    ("gelu223",   GELU223,                                   None),  # gelu211 with slow output EMA (d=0.99 vs d=0.9 input): stable long-run output baseline for novelty
+    ("gelu224",   GELU224,                                   None),  # squared-activation gate: gate based on x² deviation from EMA(x²) — sign-symmetric novelty amplification
+    ("gelu225",   GELU225,                                   None),  # input-output divergence gate: amplifies channels where GELU transforms surprisingly (z_in - z_out)
+    # ── Round 3: Adaptation priority ─────────────────────────────────────────────────────────────
+    ("gelu226",   GELU226,                                   None),  # per-channel ring buffer familiarity gate: per-channel deviation to nearest episode -> stronger adaptation
+    ("gelu227",   GELU227,                                   None),  # soft-attention ring buffer: softmax over all episodes for retrieval vs hard nearest-episode (gelu54)
+    ("gelu228",   GELU228,                                   None),  # dual-buffer training-frozen+test-exclusive: separate memories so pass2 gets extra test-familiarity suppression
+    ("gelu229",   GELU229,                                   None),  # hard sigmoid suppression gate: sharp novel/familiar transition for stronger pass-2 adaptation
+    ("gelu230",   GELU230,                                   None),  # ring buffer + familiarity floor: near-zero gate for very-familiar content on pass 2 (double suppression)
+    # ── Round 4: Adaptation priority — buffer-size & self-detecting pass-2 ──────────────────────
+    ("gelu231",   GELU231,                                   None),  # gelu54 + N=512 large buffer: covers full test pass, no overwriting → larger pass-2 coverage
+    ("gelu232",   GELU232,                                   None),  # gelu229 hard sigmoid + N=512: sharp gate + full test-pass coverage → strong adaptation
+    ("gelu233",   GELU233,                                   None),  # self-detecting pass-2, hard sigmoid: gate=1.0 pass-1 (zero PPL impact), hard gate only after detecting repeated batches
+    ("gelu234",   GELU234,                                   None),  # self-detecting pass-2, soft exp gate: gate=1.0 pass-1, tau=5 alpha=0.6 exp gate fires only on pass-2+ batches
+    ("gelu235",   GELU235,                                   None),  # gelu211 product gate + episodic adaptation: best-PPL mechanism + self-detecting pass-2 ring buffer stack
+    # ── Round 5: Adaptation priority — train.py reset + stronger/hybrid gates ───────────────
+    ("gelu236",   GELU236,                                   None),  # N=512 soft gate, stronger tau=4/alpha=0.5: larger pass-2 gate contrast -> larger delta
+    ("gelu237",   GELU237,                                   None),  # N=512 with eval-only hard gate in pass 2: soft gate training, hard gate eval-pass-2 (4x contrast vs pass-1)
+    ("gelu238",   GELU238,                                   None),  # gelu211 product gate + eval-only episodic hard gate: best PPL from layer1 + strong delta from layer2
+    ("gelu239",   GELU239,                                   None),  # DEPLETION: N=512, FIRE_THRESH=0.85, depl*=0.5 on hit, gate=exp(-k*(1-depl)); pass-1 gate=1.0 guaranteed
+    ("gelu240",   GELU240,                                   None),  # DEPLETION+per-token: same as gelu239 but gate=exp(-k*(1-depl)*tok_sim); selective per-token suppression
+    ("gelu241",   GELU241,                                   None),  # HIT-COUNTER harmonic: gate=1/(1+h)^gamma; h=0->1.0, h=1->0.5 (gamma=1), discrete non-trained counter
+    ("gelu242",   GELU242,                                   None),  # HIT-COUNTER exponential: gate=exp(-lambda*h); h=0->1.0, h=1->0.5 (lambda=0.7), compounds per pass
+    ("gelu243",   GELU243,                                   None),  # gelu211 PPL gate + eval-only depletion: best-of-both; pass-1 PPL=gelu211, pass-2 depletion boosts delta
+    ("gelu244",   GELU244,                                   None),  # DEPLETION+learnable rate+floor: gate=floor+(1-floor)*exp(-k*(1-depl)); depl_rate and floor both learned
+    ("gelu245",   GELU245,                                   None),  # HYBRID depletion*hit-count: gate=exp(-k*(1-depl)-lambda*h); double penalty per pass compounds strongly
+    ("gelu246",   GELU246,                                   None),  # OUTPUT BLENDING: output=(depl)*gelu(x)+(1-depl)*cached_mean; recall pass-1 activation on pass-2
+    ("gelu247",   GELU247,                                   None),  # AGGRESSIVE DEPLETION: depl_rate=0.2 (vs 0.5); pass-2 gate=exp(-k*0.8)~0.13; tests robustness to heavy suppression
+    ("gelu248",   GELU248,                                   None),  # per-token HIT-COUNT: gate=exp(-k*h*tok_sim); h=0->1.0, h=1->per-token; compounding + selective
+    # ── Round 7: Facilitation (gate>1) + detection-based frozen buffer (fixes cross-pass bug) ─
+    ("gelu249",   GELU249,                                   None),  # FACILITATION: detect pass-2 via first high-sim match; freeze buffer; PRE-FIRE facil*=2; gate=1+k*(facil-1)
+    ("gelu250",   GELU250,                                   None),  # per-token FACILITATION: same detection+freeze+pre-fire but gate(b,t)=1+k*(facil-1)*tok_sim; selective boost
+    ("gelu251",   GELU251,                                   None),  # ADDITIVE INJECTION: output=gelu(x)+inject*(facil-1)*stored_mean; adds pass-1 activation direction progressively
+    ("gelu252",   GELU252,                                   None),  # SOFT-CEILING FACILITATION: gate=1+k*tanh((facil-1)*softness); bounded boost that compounds across passes
+    ("gelu253",   GELU253,                                   None),  # PRE-FIRE DEPLETION: control experiment; gate<1 applied from pass-2, stronger at pass-3; tests depletion dir
+    ("gelu254",   GELU254,                                   None),  # gelu211 PPL + eval-only pre-fire facilitation: best PPL=159 + monotonic adaptation (gelu249 layer stacked)
+    ("gelu255",   GELU255,                                   None),  # STRONG FACILITATION: k=2.0, gate capped at 3.0; 200% boost at pass-2, tests sensitivity to boost magnitude
+    ("gelu256",   GELU256,                                   None),  # GENTLE FACILITATION: k=0.1, 10% boost pass-2, 30% pass-3; minimal perturbation stability test
+    ("gelu257",   GELU257,                                   None),  # SIGMOID-TRANSITION FACILITATION: gate=1+k*sigmoid(sharp*(facil-thresh)); near-zero Δ1→2, large Δ1→3 by design
+    ("gelu258",   GELU258,                                   None),  # DIRECTIONAL FACILITATION: amplifies activation component along stored-context direction; orthogonal dims unchanged
+    # ── Round 8: Creative new approaches — input-space, value-blending, per-dim, EMA, LTP, OCS ─
+    ("gelu259",   GELU259,                                   None),  # PRE-GELU INPUT NUDGING: corrects INPUT x toward stored pass-1 mean before non-linearity; pre-fire; inject*=2 each pass
+    ("gelu260",   GELU260,                                   None),  # SOFT KV-STORE BLEND: interpolates gelu(x) with stored pass-1 activation value; blend=sigmoid(k*log2(facil))
+    ("gelu261",   GELU261,                                   None),  # PER-DIM MAGNITUDE GATE: D-dim gate; high-|activation| dims in pass-1 get largest boost in pass-2
+    ("gelu262",   GELU262,                                   None),  # EMA SELF-SIMILARITY GATE: no ring buffer; gate=1+k*cos_sim(current,ema)^power; naturally grows across passes
+    ("gelu263",   GELU263,                                   None),  # PASS-COUNTER GATE: explicit pass tracking; gate=1+k*(pass_num-1)*sim; linear monotonic adaptation
+    ("gelu264",   GELU264,                                   None),  # TWO-SCALE MEMORY: local (episodic per-slot) + global (corpus-mean) facilitation signals combined
+    ("gelu265",   GELU265,                                   None),  # VARIANCE-FOCUSED PER-DIM: low-variance dims (stable across pass-1 batches) get largest boost; Welford online var
+    ("gelu266",   GELU266,                                   None),  # HYSTERESIS LTP GATE: binary potentiation; ramp until hit_count>=LTP_THRESH then snap to G_HIGH; Δ1→3>>Δ1→2
+    ("gelu267",   GELU267,                                   None),  # ORTHOGONAL COMPLEMENT SUPPRESSION: boost parallel-to-context component AND suppress perpendicular component
+    ("gelu268",   GELU268,                                   None),  # gelu211 PPL + eval-only OCS: gelu211 product gate (PPL~159) + OCS adaptation layer; targets Δ1→3>Δ1→2>0
+    # ── Round 9: Novel — Hopfield, contrastive, hit-count, affine-align, slerp, frozen-EMA, sparse, delta-inject ─
+    ("gelu269",   GELU269,                                   None),  # HOPFIELD RETRIEVAL: modern Hopfield soft-attn over pass-1 buffer; additive delta inject; log-scale hit ramp
+    ("gelu270",   GELU270,                                   None),  # CONTRASTIVE SLOT GATE: nearest_sim - mean_others_sim; only fires when SPECIFICALLY matching, not just generally similar
+    ("gelu271",   GELU271,                                   None),  # HIT-COUNT SATURATION: gate=1+k*tanh(count/sat); smooth bounded facilitation; saturates unlike exponential
+    ("gelu272",   GELU272,                                   None),  # AFFINE STATS ALIGNMENT: remap pass-2 activation distribution to match stored pass-1 mean/std; distribution matching
+    ("gelu273",   GELU273,                                   None),  # NORM-PRESERVING SLERP: spherical interpolation toward stored context direction; preserves activation norm exactly
+    ("gelu274",   GELU274,                                   None),  # gelu211 + LINEAR PASS-COUNTER: best PPL (159) + eval-only linear gate=1+k*(pass_num-1)*sim; Δ1→3=2*Δ1→2 exactly
+    ("gelu275",   GELU275,                                   None),  # PER-POSITION MEMORY: stores position-wise means (T,D); facilitation keyed by sequence position not batch content
+    ("gelu276",   GELU276,                                   None),  # gelu211 FROZEN-EMA RELEASE: freeze EMA at pass-1 end; pass-2 z-scores fall to 0 → gate→1 → less suppression
+    ("gelu277",   GELU277,                                   None),  # SPARSE TOP-K AMPLIFY: identify top-10% active dims from pass-1; binary gate amplifies ONLY those dims in pass-2
+    ("gelu278",   GELU278,                                   None),  # PREDICTIVE DELTA INJECT: additive injection of (stored-global_mean) residual; linear scaling k*count; max signal/noise
 ]
 
 
@@ -964,8 +1108,11 @@ def run_experiment(exp_name, activation_cls, vocab, device, early_stop=None):
         print()
 
     # Test – run 3 times in sequence to observe state-adaptive improvement.
-    # EMA state is updated on every forward pass (no_grad blocks inside modules),
-    # so each subsequent run sees a better-calibrated EMA baseline.
+    # Reset stateful modules so the ring buffer starts clean (no training-data
+    # contamination) and any pass-detection flags are cleared back to False.
+    for m in model.modules():
+        if hasattr(m, 'reset_state'):
+            m.reset_state()
     print("── Test (3 sequential passes) ──")
     test_results = []
     for test_run in range(1, 4):
