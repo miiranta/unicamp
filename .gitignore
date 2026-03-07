@@ -2,10 +2,6 @@
 *.pyo
 /__pycache__/
 
-*.pt
-*.gpu_lock_*
-
-# Ignore latex auxiliary and output files
 *.aux
 *.log
 *.out
@@ -18,4 +14,17 @@
 *.fdb_latexmk
 *.fls
 
+*.env
 
+*.pt
+
+# Research
+1_atas/
+2_sentences/
+3_sentences_selected/
+
+*.gpu_lock_*
+
+# Experimental Software Engineering
+Experimental Software Engineering/Task_1/source
+Experimental Software Engineering/Task_1/output.txt
