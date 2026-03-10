@@ -14,14 +14,15 @@ SYSTEM_PROMPT = (
     "Your goal is to find every domain name and hostname present in the source files "
     "no matter how they appear: URLs, HTML href/src/action, JS strings, config values, "
     "CSS, comments, redirects, API endpoints, CDN references, etc.\n\n"
-    "You have three tools:\n"
+    "You have four tools:\n"
     "  list_files     - see all available files with sizes and chunk counts\n"
     "  read_chunk     - read a specific chunk of a file (you pick which ones)\n"
+    "  search_text    - search for a text string across all files; returns file paths and chunk indexes of every match\n"
     "  report_domains - report domains found so far (call multiple times as you go)\n\n"
-    "Strategy: call list_files first, then read chunks from files likely to contain "
-    "domains (HTML, JS, JSON, YAML, config, etc.). After reading each file or batch, "
-    "call report_domains with what you found so far. When you have read everything "
-    "relevant, call report_domains one final time with is_final=true. "
+    "Strategy: call list_files first, then use search_text to quickly locate chunks "
+    "that contain domain-like patterns, and read_chunk for deeper inspection. After "
+    "reading each file or batch, call report_domains with what you found so far. "
+    "When you have read everything relevant, call report_domains one final time with is_final=true. "
     "Collect bare domains only (e.g. example.com, cdn.host.org) - strip protocols, "
     "paths, ports, and query strings."
 )
@@ -53,6 +54,23 @@ TOOLS = [
                     },
                 },
                 "required": ["filename", "chunk_index"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_text",
+            "description": "Search for a text string across all source files. Returns a list of matches with file path and chunk index where each match was found.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The text to search for (case-insensitive)",
+                    },
+                },
+                "required": ["query"],
             },
         },
     },
@@ -118,6 +136,19 @@ def handle_tool(name: str, args: dict, index: dict, accumulated: set) -> tuple[s
         if not (0 <= idx < len(chunks)):
             return f"ERROR: chunk_index {idx} out of range (0-{len(chunks) - 1}).", False
         return chunks[idx], False
+
+    if name == "search_text":
+        query = args.get("query", "").lower()
+        if not query:
+            return "ERROR: 'query' must be a non-empty string.", False
+        matches = []
+        for fname, meta in index.items():
+            for i, chunk in enumerate(meta["chunks"]):
+                if query in chunk.lower():
+                    matches.append(f"{fname}  chunk {i}")
+        if not matches:
+            return f"No matches found for '{query}'.", False
+        return f"Found {len(matches)} match(es):\n" + "\n".join(matches), False
 
     if name == "report_domains":
         new_domains = {d.strip().lower() for d in args.get("domains", []) if d.strip()}
