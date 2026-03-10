@@ -7,24 +7,31 @@ from openai import OpenAI
 
 SCRIPT_DIR = pathlib.Path(__file__).parent
 SOURCE_DIR = SCRIPT_DIR / "source"
-OUTPUT_FILE = SCRIPT_DIR / "output.txt"
+OUTPUT_MD = SCRIPT_DIR / "output.md"
 
 SYSTEM_PROMPT = (
-    "You are an expert domain extractor working with a codebase. "
-    "Your goal is to find every domain name and hostname present in the source files "
-    "no matter how they appear: URLs, HTML href/src/action, JS strings, config values, "
-    "CSS, comments, redirects, API endpoints, CDN references, etc.\n\n"
+    "You are an expert software architect analyzing a codebase. "
+    "Your goal is to identify the high-level architecture domains (also called bounded contexts "
+    "or functional areas) present in the source files. "
+    "Architecture domains are cohesive areas of responsibility such as 'Authentication', "
+    "'Data Visualization', 'Patient Management', 'File Import/Export', 'Notifications', "
+    "'Analytics', 'Configuration', 'Localization', etc.\n\n"
+    "Look for evidence in: directory/module names, class names, function names, comments, "
+    "configuration keys, UI labels, API route names, and any conceptual groupings in the code.\n\n"
     "You have four tools:\n"
     "  list_files     - see all available files with sizes and chunk counts\n"
     "  read_chunk     - read a specific chunk of a file (you pick which ones)\n"
     "  search_text    - search for a text string across all files; returns file paths and chunk indexes of every match\n"
-    "  report_domains - report domains found so far (call multiple times as you go)\n\n"
-    "Strategy: call list_files first, then use search_text to quickly locate chunks "
-    "that contain domain-like patterns, and read_chunk for deeper inspection. After "
-    "reading each file or batch, call report_domains with what you found so far. "
-    "When you have read everything relevant, call report_domains one final time with is_final=true. "
-    "Collect bare domains only (e.g. example.com, cdn.host.org) - strip protocols, "
-    "paths, ports, and query strings."
+    "  report_domains - report architecture domains found so far (call multiple times as you go)\n\n"
+    "Strategy: call list_files first to understand the overall structure, then use read_chunk "
+    "on key files (entry points, configs, main modules, index files) and search_text to locate "
+    "conceptual groupings. After reading each batch, call report_domains with what you found. "
+    "When you have read everything relevant, call report_domains one final time with is_final=true "
+    "AND include a mermaid_diagram field: a complete Mermaid 'graph TD' or 'graph LR' diagram "
+    "that visualises all discovered domains as a high-level domain map, grouping related domains "
+    "under common parent nodes where it makes sense. "
+    "Report concise domain names in title case (e.g. 'User Authentication', 'Data Visualization'). "
+    "Avoid duplicates and overly granular names - aim for meaningful high-level functional areas."
 )
 
 TOOLS = [
@@ -79,8 +86,10 @@ TOOLS = [
         "function": {
             "name": "report_domains",
             "description": (
-                "Report domains found so far. Call incrementally as you discover domains. "
-                "Set is_final=true on the last call to signal you are done."
+                "Report architecture domains (functional areas/bounded contexts) found so far. "
+                "Call incrementally as you discover domains. "
+                "Set is_final=true on the last call to signal you are done, and include "
+                "mermaid_diagram with a complete Mermaid graph diagram of all domains."
             ),
             "parameters": {
                 "type": "object",
@@ -88,7 +97,11 @@ TOOLS = [
                     "domains": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "Bare domain names found in the chunks read so far",
+                        "description": "Architecture domain names (functional areas) found in the chunks read so far, in title case",
+                    },
+                    "mermaid_diagram": {
+                        "type": "string",
+                        "description": "Required when is_final=true. A complete Mermaid graph (graph TD or graph LR) visualising all discovered architecture domains, grouping related ones under common parent nodes.",
                     },
                     "is_final": {
                         "type": "boolean",
@@ -148,29 +161,24 @@ def handle_tool(name: str, args: dict, index: dict, accumulated: set) -> tuple[s
                     matches.append(f"{fname}  chunk {i}")
         if not matches:
             return f"No matches found for '{query}'.", False
-        return f"Found {len(matches)} match(es):\n" + "\n".join(matches), False
+        MAX_MATCHES = 50
+        truncated = matches[:MAX_MATCHES]
+        suffix = f"\n(showing {MAX_MATCHES} of {len(matches)})" if len(matches) > MAX_MATCHES else ""
+        return f"Found {len(matches)} match(es):\n" + "\n".join(truncated) + suffix, False
 
     if name == "report_domains":
-        new_domains = {d.strip().lower() for d in args.get("domains", []) if d.strip()}
+        new_domains = {d.strip().title() for d in args.get("domains", []) if d.strip()}
         accumulated.update(new_domains)
         is_final = bool(args.get("is_final", False))
-        OUTPUT_FILE.write_text("\n".join(sorted(accumulated)) + "\n", encoding="utf-8")
-        return f"Recorded {len(new_domains)} new domain(s). Total so far: {len(accumulated)}.", is_final
+        if is_final:
+            mermaid = args.get("mermaid_diagram", "").strip()
+            if mermaid:
+                if not mermaid.startswith("```"):
+                    mermaid = f"```mermaid\n{mermaid}\n```"
+                OUTPUT_MD.write_text(mermaid + "\n", encoding="utf-8")
+        return f"Recorded {len(new_domains)} new domain(s). Total: {len(accumulated)}.", is_final
 
     return "ERROR: unknown tool.", False
-
-def assistant_msg(msg) -> dict:
-    d: dict = {"role": "assistant", "content": msg.content}
-    if msg.tool_calls:
-        d["tool_calls"] = [
-            {
-                "id": tc.id,
-                "type": "function",
-                "function": {"name": tc.function.name, "arguments": tc.function.arguments},
-            }
-            for tc in msg.tool_calls
-        ]
-    return d
 
 def main() -> None:
     load_dotenv(find_dotenv(usecwd=False, raise_error_if_not_found=False))
@@ -201,28 +209,41 @@ def main() -> None:
     client = OpenAI(api_key=api_key, base_url="https://openrouter.ai/api/v1")
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": "Please find all domain names in the source files."},
+        {"role": "user", "content": "Please identify all software architecture domains (functional areas/bounded contexts) present in this codebase."},
     ]
 
     accumulated: set[str] = set()
+    read_chunk_ids: set[str] = set()
+    search_text_ids: set[str] = set()
     step = 0
 
     while True:
+        stale_ids = read_chunk_ids | search_text_ids
+        trimmed = [
+            {**m, "content": "[read]"} if m.get("role") == "tool" and m.get("tool_call_id") in stale_ids else m
+            for m in messages
+        ]
         step += 1
         print(f"[step {step}] Querying LLM ...", flush=True)
         response = client.chat.completions.create(
             model=model,
-            messages=messages,
+            messages=trimmed,
             tools=TOOLS,
             tool_choice="auto",
             temperature=0,
         )
         msg = response.choices[0].message
-        messages.append(assistant_msg(msg))
+        amsg: dict = {"role": "assistant", "content": msg.content}
+        if msg.tool_calls:
+            amsg["tool_calls"] = [
+                {"id": tc.id, "type": "function", "function": {"name": tc.function.name, "arguments": tc.function.arguments}}
+                for tc in msg.tool_calls
+            ]
+        messages.append(amsg)
 
         if not msg.tool_calls:
             print("  (no tool call - re-prompting)")
-            messages.append({"role": "user", "content": "Please call report_domains with is_final=true when done."})
+            messages.append({"role": "user", "content": "Please call report_domains with the architecture domains you have identified, set is_final=true, and include the mermaid_diagram when done."})
             continue
 
         done = False
@@ -230,11 +251,14 @@ def main() -> None:
             name = tc.function.name
             args = json.loads(tc.function.arguments)
 
-            if name == "report_domains":
+            if name == "read_chunk":
+                read_chunk_ids.add(tc.id)
+                print(f"  -> {name}({', '.join(f'{k}={v!r}' for k, v in args.items())})")
+            elif name == "search_text":
+                search_text_ids.add(tc.id)
+                print(f"  -> {name}({', '.join(f'{k}={v!r}' for k, v in args.items())})")
+            elif name == "report_domains":
                 print(f"  -> report_domains ({len(args.get('domains', []))} domain(s), final={args.get('is_final', False)})")
-            else:
-                arg_summary = ", ".join(f"{k}={v!r}" for k, v in args.items())
-                print(f"  -> {name}({arg_summary})")
 
             result, is_final = handle_tool(name, args, index, accumulated)
             messages.append({"role": "tool", "tool_call_id": tc.id, "content": result})
@@ -246,8 +270,10 @@ def main() -> None:
             break
 
     sorted_domains = sorted(accumulated)
-    OUTPUT_FILE.write_text("\n".join(sorted_domains) + "\n", encoding="utf-8")
-    print(f"\nDone - {len(sorted_domains)} unique domain(s) written to '{OUTPUT_FILE}'")
+    if OUTPUT_MD.exists():
+        print(f"Mermaid diagram written to '{OUTPUT_MD}'")
+    else:
+        print("WARNING: No mermaid_diagram was returned by the LLM in the final report_domains call.")
 
 if __name__ == "__main__":
     main()
