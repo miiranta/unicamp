@@ -22,6 +22,7 @@
 1_atas/
 2_sentences/
 3_sentences_selected/
+iterations/
 
 *.gpu_lock_*
 
