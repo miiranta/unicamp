@@ -134,9 +134,9 @@ def run_evaluation(prompt_text, sentences=None, checkpoint_dir=None):
                     history.append((sentence, grade))
                 continue
 
-            print(f"[{i}/{total}] {date}: {sentence[:80]}...")
+            print(f"[{i}/{total}] {date}: {sentence[:80]}...", end=" ")
             grade = evaluate_sentence(prompt_text, sentence, history=history)
-            print(f"  -> {grade}")
+            print(f"-> {grade}")
             results.append({'date': date, 'sentence': sentence, 'grade': grade})
             if grade is not None:
                 history.append((sentence, grade))

@@ -23,6 +23,7 @@ __pycache__/
 2_sentences/
 3_sentences_selected/
 iterations/
+plots/
 
 *.gpu_lock_*
 

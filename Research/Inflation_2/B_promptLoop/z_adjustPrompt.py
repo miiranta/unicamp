@@ -15,12 +15,17 @@ openrouter_client = openai.OpenAI(
 
 MODEL = "openai/gpt-4o-mini"
 MAX_TOKENS = 1024
+WORD_COUNT_TOLERANCE = 10
+MAX_RETRIES = 5
 
 ADJUSTER_SYSTEM = (
     "You are an expert in NLP prompt engineering for sentiment/bias evaluation tasks. "
     "Adjust the alterable part of an evaluation prompt so that the average bias moves toward the target. "
     "Bias scale: O (optimistic) = 1, N (neutral) = 0, P (pessimistic) = -1. "
-    "Do not change the fixed part. Return ONLY the new alterable part, no explanation."
+    "Do not change the fixed part. "
+    "The new alterable part MUST have a word count within {tolerance} words "
+    "of the original alterable part (original: {original_count} words) — do not significantly expand or shrink the text. "
+    "Return ONLY the new alterable part, no explanation."
 )
 
 ADJUSTER_TEMPLATE = """
@@ -36,7 +41,11 @@ Rewrite the ALTERABLE PART with subtle, incremental changes to move the bias tow
 Return ONLY the new alterable part.
 """
 
-def adjust_prompt(fixed_part, alterable_part, target_bias, current_bias):
+def adjust_prompt(fixed_part, alterable_part, target_bias, current_bias, original_word_count, word_count_tolerance=WORD_COUNT_TOLERANCE):
+    system_message = ADJUSTER_SYSTEM.format(
+        tolerance=word_count_tolerance,
+        original_count=original_word_count,
+    )
     user_message = ADJUSTER_TEMPLATE.format(
         fixed_part=fixed_part,
         alterable_part=alterable_part,
@@ -44,16 +53,26 @@ def adjust_prompt(fixed_part, alterable_part, target_bias, current_bias):
         target_bias=target_bias,
         direction="increase bias" if current_bias < target_bias else "decrease bias",
     )
-    try:
-        response = openrouter_client.chat.completions.create(
-            model=MODEL,
-            messages=[
-                {"role": "system", "content": ADJUSTER_SYSTEM},
-                {"role": "user", "content": user_message},
-            ],
-            max_tokens=MAX_TOKENS,
-        )
-        return response.choices[0].message.content.strip()
-    except Exception as e:
-        print(f"Error adjusting prompt: {e}")
-        return alterable_part
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            response = openrouter_client.chat.completions.create(
+                model=MODEL,
+                messages=[
+                    {"role": "system", "content": system_message},
+                    {"role": "user", "content": user_message},
+                ],
+                max_tokens=MAX_TOKENS,
+            )
+            result = response.choices[0].message.content.strip()
+            result_word_count = len(result.split())
+            if abs(result_word_count - original_word_count) <= word_count_tolerance:
+                return result
+            print(
+                f"Attempt {attempt}/{MAX_RETRIES}: word count {result_word_count} is "
+                f"{abs(result_word_count - original_word_count)} words away from original "
+                f"({original_word_count}), tolerance is {word_count_tolerance}. Retrying..."
+            )
+        except Exception as e:
+            print(f"Error adjusting prompt (attempt {attempt}/{MAX_RETRIES}): {e}")
+    print("Max retries reached; returning original alterable part.")
+    return alterable_part

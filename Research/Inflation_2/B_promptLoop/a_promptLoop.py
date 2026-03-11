@@ -108,6 +108,7 @@ def main():
         return
 
     start_iteration, prompt_alterable = _resume_state()
+    original_word_count = len(PROMPT_ALTERABLE.split())
     if start_iteration > 1:
         print(f"Resuming from iteration {start_iteration}.")
 
@@ -149,6 +150,7 @@ def main():
             alterable_part=prompt_alterable,
             target_bias=TARGET_BIAS,
             current_bias=current_bias,
+            original_word_count=original_word_count,
         )
         print(f"  New alterable part: {prompt_alterable}\n")
 
