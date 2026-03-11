@@ -124,7 +124,7 @@ def main():
         print(f"{'='*60}")
 
         _save_partial_summary(folder, iteration, prompt_alterable)
-        evaluation = run_evaluation(full_prompt, sentences=sentences, verbose=True, checkpoint_dir=os.path.join(folder, 'checkpoints'))
+        evaluation = run_evaluation(full_prompt, sentences=sentences, checkpoint_dir=os.path.join(folder, 'checkpoints'))
         current_bias = evaluation['bias']
 
         if current_bias is None:

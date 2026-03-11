@@ -1,6 +1,6 @@
 *.pyc
 *.pyo
-/__pycache__/
+__pycache__/
 
 *.aux
 *.log

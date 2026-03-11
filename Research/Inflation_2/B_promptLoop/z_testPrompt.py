@@ -20,25 +20,32 @@ MODEL = "openai/gpt-4o-mini"
 MAX_TOKENS = 4
 RETRIES = 5
 RETRY_SLEEP = 2.0
+HISTORY_SIZE = 10
 
 GRADE_MAP = {"O": 1, "N": 0, "P": -1}
+GRADE_LETTER = {v: k for k, v in GRADE_MAP.items()}
 
 def _parse_grade(raw):
     cleaned = raw.upper().replace('\n', '').replace('.', '').replace('<｜BEGIN▁OF▁SENTENCE｜>', '').strip()
     return GRADE_MAP.get(cleaned, None)
 
-def _call_model(prompt_text, sentence):
+def _call_model(prompt_text, sentence, history=None):
+    messages = []
+    for prev_sentence, prev_grade in (history or [])[-HISTORY_SIZE:]:
+        messages.append({"role": "user", "content": prompt_text + prev_sentence})
+        messages.append({"role": "assistant", "content": GRADE_LETTER[prev_grade]})
+    messages.append({"role": "user", "content": prompt_text + sentence})
     response = openrouter_client.chat.completions.create(
         model=MODEL,
-        messages=[{"role": "user", "content": prompt_text + sentence}],
+        messages=messages,
         max_tokens=MAX_TOKENS,
     )
     return response.choices[0].message.content
 
-def evaluate_sentence(prompt_text, sentence):
+def evaluate_sentence(prompt_text, sentence, history=None):
     for attempt in range(1, RETRIES + 1):
         try:
-            raw = _call_model(prompt_text, sentence)
+            raw = _call_model(prompt_text, sentence, history=history)
             grade = _parse_grade(raw)
             if grade is not None:
                 return grade
@@ -50,7 +57,6 @@ def evaluate_sentence(prompt_text, sentence):
 
 def _meeting_key(filename):
     return int(os.path.splitext(filename)[0].split('_', 1)[0])
-
 
 def load_sentences():
     sentences = []
@@ -98,7 +104,7 @@ def _append_checkpoint(path, grade, sentence):
             writer.writerow(['Grade', 'Sentence'])
         writer.writerow([grade, sentence])
 
-def run_evaluation(prompt_text, sentences=None, verbose=True, checkpoint_dir=None):
+def run_evaluation(prompt_text, sentences=None, checkpoint_dir=None):
     if sentences is None:
         sentences = load_sentences()
 
@@ -112,6 +118,7 @@ def run_evaluation(prompt_text, sentences=None, verbose=True, checkpoint_dir=Non
     results = []
     total = len(sentences)
     i = 0
+    history = []
 
     for date in sorted(grouped.keys(), key=_meeting_key):
         checkpoint_path = os.path.join(checkpoint_dir, f'{date}.csv') if checkpoint_dir else None
@@ -121,17 +128,18 @@ def run_evaluation(prompt_text, sentences=None, verbose=True, checkpoint_dir=Non
             i += 1
             if sentence in completed:
                 grade = completed[sentence]
-                if verbose:
-                    print(f"[{i}/{total}] {date}: {sentence[:80]}... (checkpoint: {grade})")
+                print(f"[{i}/{total}] {date}: {sentence[:80]}... (checkpoint: {grade})")
                 results.append({'date': date, 'sentence': sentence, 'grade': grade})
+                if grade is not None:
+                    history.append((sentence, grade))
                 continue
 
-            if verbose:
-                print(f"[{i}/{total}] {date}: {sentence[:80]}...")
-            grade = evaluate_sentence(prompt_text, sentence)
-            if verbose:
-                print(f"  -> {grade}")
+            print(f"[{i}/{total}] {date}: {sentence[:80]}...")
+            grade = evaluate_sentence(prompt_text, sentence, history=history)
+            print(f"  -> {grade}")
             results.append({'date': date, 'sentence': sentence, 'grade': grade})
+            if grade is not None:
+                history.append((sentence, grade))
 
             if checkpoint_path:
                 _append_checkpoint(checkpoint_path, grade, sentence)
