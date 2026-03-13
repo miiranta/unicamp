@@ -17,7 +17,7 @@ client = openai.OpenAI(
     base_url="https://openrouter.ai/api/v1",
 )
 
-MODEL        = "qwen/qwen3-235b-a22b-2507"
+MODEL        = "x-ai/grok-4.1-fast"
 MAX_TOKENS   = 1024
 MAX_RETRIES  = 5
 RETRY_SLEEP  = 2.0

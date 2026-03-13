@@ -14,50 +14,28 @@ client = openai.OpenAI(
     base_url="https://openrouter.ai/api/v1",
 )
 
-MODEL                = "qwen/qwen3-235b-a22b-2507"
+MODEL                = "x-ai/grok-4.1-fast"
 MAX_TOKENS           = 1024
 WORD_COUNT_TOLERANCE = 10
 MAX_RETRIES          = 5
 N_CANDIDATES         = 10
 
 ADJUSTER_SYSTEM = (
-    "You are an expert in NLP prompt engineering for sentiment/bias evaluation tasks. "
-    "Adjust the alterable part of an evaluation prompt so that the average bias moves toward the target. "
-    "Bias scale: O (optimistic) = 1, N (neutral) = 0, P (pessimistic) = -1. "
-    "Do not change the fixed part. "
-    "The new alterable part MUST have a word count within {tolerance} words "
-    "of the original alterable part (original: {original_count} words) — do not significantly expand or shrink the text. "
-    "Return ONLY the new alterable part, no explanation."
+    "You are a prompt engineer. Rewrite the ALTERABLE PART of an evaluation prompt "
+    "to shift its average bias (O=+1, N=0, P=−1) toward the target. "
+    "Keep the word count within {tolerance} words of the original ({original_count} words). "
+    "Return ONLY the rewritten alterable part, no explanation."
 )
 
-ADJUSTER_TEMPLATE = """
-CURRENT ALTERABLE PART:
-{alterable_part}
-
-FIXED PART (do not change):
-{fixed_part}
-
-Current average bias: {current_bias:.4f} | Target bias: {target_bias:.4f}
-Problem: {direction}
-
-Rewrite the ALTERABLE PART to shift the classification boundary so that more sentences land in the
-correct category. Focus on the definition wording that determines whether a sentence qualifies as
-O, N, or P - tighten or loosen the threshold criteria as described above.
-Return ONLY the new alterable part.
-"""
-
-DIRECTION_INCREASE = (
-    "the current prompt is classifying too many sentences as P (pessimistic). "
-    "Raise the bar for what qualifies as P (make the criteria stricter) "
-    "and/or lower the bar for what qualifies as O (make the criteria more inclusive), "
-    "so that borderline sentences shift to N or O."
+ADJUSTER_TEMPLATE = (
+    "ALTERABLE PART (rewrite this):\n{alterable_part}\n\n"
+    "FIXED PART (do not change):\n{fixed_part}\n\n"
+    "Current bias: {current_bias:+.4f} > Target: {target_bias:+.4f}  ({direction})\n"
+    "Return ONLY the new alterable part."
 )
-DIRECTION_DECREASE = (
-    "the current prompt is classifying too many sentences as O (optimistic). "
-    "Raise the bar for what qualifies as O (make the criteria stricter) "
-    "and/or lower the bar for what qualifies as P (make the criteria more inclusive), "
-    "so that borderline sentences shift to N or P."
-)
+
+DIRECTION_INCREASE = "bias too low - loosen P criteria and/or tighten O criteria to shift borderline sentences toward N or O"
+DIRECTION_DECREASE = "bias too high - loosen O criteria and/or tighten P criteria to shift borderline sentences toward N or P"
 
 
 # ---------------------------------------------------------------------------
