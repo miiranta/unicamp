@@ -1,6 +1,8 @@
 import os
 import csv
 import time
+import threading
+import concurrent.futures
 import openai
 from dotenv import load_dotenv
 
@@ -16,11 +18,12 @@ openrouter_client = openai.OpenAI(
     base_url="https://openrouter.ai/api/v1",
 )
 
-MODEL = "openai/gpt-4o-mini"
+MODEL = "google/gemma-3-27b-it"
 MAX_TOKENS = 4
 RETRIES = 5
 RETRY_SLEEP = 2.0
 HISTORY_SIZE = 10
+MAX_WORKERS = 10
 
 GRADE_MAP = {"O": 1, "N": 0, "P": -1}
 GRADE_LETTER = {v: k for k, v in GRADE_MAP.items()}
@@ -54,6 +57,16 @@ def evaluate_sentence(prompt_text, sentence, history=None):
             print(f"  Error on attempt {attempt}/{RETRIES}: {e}")
         time.sleep(RETRY_SLEEP)
     return None
+
+def _evaluate_one(prompt_text, idx, total, date, sentence, checkpoint_path, lock):
+    print(f"[{idx}/{total}] {date}: {sentence[:80]}...", end=" ", flush=True)
+    grade = evaluate_sentence(prompt_text, sentence)
+    print(f"-> {grade}", flush=True)
+    if checkpoint_path is not None:
+        with lock:
+            _append_checkpoint(checkpoint_path, grade, sentence)
+    return idx, date, sentence, grade
+
 
 def _meeting_key(filename):
     return int(os.path.splitext(filename)[0].split('_', 1)[0])
@@ -115,35 +128,38 @@ def run_evaluation(prompt_text, sentences=None, checkpoint_dir=None):
     for date, sentence in sentences:
         grouped.setdefault(date, []).append(sentence)
 
-    results = []
     total = len(sentences)
-    i = 0
-    history = []
+    results_map = {}
+    futures_map = {}
+    checkpoint_locks = {}
+    idx = 0
 
-    for date in sorted(grouped.keys(), key=_meeting_key):
-        checkpoint_path = os.path.join(checkpoint_dir, f'{date}.csv') if checkpoint_dir else None
-        completed = _load_checkpoint(checkpoint_path) if checkpoint_path else {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        for date in sorted(grouped.keys(), key=_meeting_key):
+            checkpoint_path = os.path.join(checkpoint_dir, f'{date}.csv') if checkpoint_dir else None
+            completed = _load_checkpoint(checkpoint_path) if checkpoint_path else {}
+            if checkpoint_path and checkpoint_path not in checkpoint_locks:
+                checkpoint_locks[checkpoint_path] = threading.Lock()
+            lock = checkpoint_locks.get(checkpoint_path, threading.Lock())
 
-        for sentence in grouped[date]:
-            i += 1
-            if sentence in completed:
-                grade = completed[sentence]
-                print(f"[{i}/{total}] {date}: {sentence[:80]}... (checkpoint: {grade})")
-                results.append({'date': date, 'sentence': sentence, 'grade': grade})
-                if grade is not None:
-                    history.append((sentence, grade))
-                continue
+            for sentence in grouped[date]:
+                idx += 1
+                if sentence in completed:
+                    grade = completed[sentence]
+                    print(f"[{idx}/{total}] {date}: {sentence[:80]}... (checkpoint: {grade})")
+                    results_map[idx] = {'date': date, 'sentence': sentence, 'grade': grade}
+                else:
+                    future = executor.submit(
+                        _evaluate_one,
+                        prompt_text, idx, total, date, sentence, checkpoint_path, lock,
+                    )
+                    futures_map[future] = idx
 
-            print(f"[{i}/{total}] {date}: {sentence[:80]}...", end=" ")
-            grade = evaluate_sentence(prompt_text, sentence, history=history)
-            print(f"-> {grade}")
-            results.append({'date': date, 'sentence': sentence, 'grade': grade})
-            if grade is not None:
-                history.append((sentence, grade))
+        for future in concurrent.futures.as_completed(futures_map):
+            res_idx, date, sentence, grade = future.result()
+            results_map[res_idx] = {'date': date, 'sentence': sentence, 'grade': grade}
 
-            if checkpoint_path:
-                _append_checkpoint(checkpoint_path, grade, sentence)
-
+    results = [results_map[i] for i in range(1, total + 1)]
     valid_grades = [r['grade'] for r in results if r['grade'] is not None]
     bias = sum(valid_grades) / len(valid_grades) if valid_grades else None
 

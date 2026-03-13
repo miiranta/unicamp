@@ -279,6 +279,70 @@ from experiments.gelu275 import GELU275
 from experiments.gelu276 import GELU276
 from experiments.gelu277 import GELU277
 from experiments.gelu278 import GELU278
+from experiments.gelu279 import GELU279
+from experiments.gelu280 import GELU280
+from experiments.gelu281 import GELU281
+from experiments.gelu282 import GELU282
+from experiments.gelu283 import GELU283
+from experiments.gelu284 import GELU284
+from experiments.gelu285 import GELU285
+from experiments.gelu286 import GELU286
+from experiments.gelu287 import GELU287
+from experiments.gelu288 import GELU288
+from experiments.gelu289 import GELU289
+from experiments.gelu290 import GELU290
+from experiments.gelu291 import GELU291
+from experiments.gelu292 import GELU292
+from experiments.gelu293 import GELU293
+from experiments.gelu294 import GELU294
+from experiments.gelu295 import GELU295
+from experiments.gelu296 import GELU296
+from experiments.gelu297 import GELU297
+from experiments.gelu298 import GELU298
+from experiments.gelu299 import GELU299
+from experiments.gelu300 import GELU300
+from experiments.gelu301 import GELU301
+from experiments.gelu302 import GELU302
+from experiments.gelu303 import GELU303
+from experiments.gelu304 import GELU304
+from experiments.gelu305 import GELU305
+from experiments.gelu306 import GELU306
+from experiments.gelu307 import GELU307
+from experiments.gelu308 import GELU308
+from experiments.gelu309 import GELU309
+from experiments.gelu310 import GELU310
+from experiments.gelu311 import GELU311
+from experiments.gelu312 import GELU312
+from experiments.gelu313 import GELU313
+from experiments.gelu314 import GELU314
+from experiments.gelu315 import GELU315
+from experiments.gelu316 import GELU316
+from experiments.gelu317 import GELU317
+from experiments.gelu318 import GELU318
+from experiments.gelu319 import GELU319
+from experiments.gelu320 import GELU320
+from experiments.gelu321 import GELU321
+from experiments.gelu322 import GELU322
+from experiments.gelu323 import GELU323
+from experiments.gelu324 import GELU324
+from experiments.gelu325 import GELU325
+from experiments.gelu326 import GELU326
+from experiments.gelu327 import GELU327
+from experiments.gelu328 import GELU328
+from experiments.gelu329 import GELU329
+from experiments.gelu330 import GELU330
+from experiments.gelu331 import GELU331
+from experiments.gelu332 import GELU332
+from experiments.gelu333 import GELU333
+from experiments.gelu334 import GELU334
+from experiments.gelu335 import GELU335
+from experiments.gelu336 import GELU336
+from experiments.gelu337 import GELU337
+from experiments.gelu338 import GELU338
+from experiments.gelu339 import GELU339
+from experiments.gelu340 import GELU340
+from experiments.gelu341 import GELU341
+from experiments.gelu342 import GELU342
 
 import torch
 import torch.nn as nn
@@ -987,6 +1051,70 @@ ALL_EXPERIMENTS = [
     ("gelu276",   GELU276,                                   None),  # gelu211 FROZEN-EMA RELEASE: freeze EMA at pass-1 end; pass-2 z-scores fall to 0 → gate→1 → less suppression
     ("gelu277",   GELU277,                                   None),  # SPARSE TOP-K AMPLIFY: identify top-10% active dims from pass-1; binary gate amplifies ONLY those dims in pass-2
     ("gelu278",   GELU278,                                   None),  # PREDICTIVE DELTA INJECT: additive injection of (stored-global_mean) residual; linear scaling k*count; max signal/noise
+    ("gelu279",   GELU279,                                   None),  # GATE MOMENTUM: gate_final = gate_raw × gate_ema^κ; per-channel self-reinforcing contrast across passes
+    ("gelu280",   GELU280,                                   None),  # FAST EVAL-EMA: gelu211 + fast secondary EMA (d≈0.5) that suppresses content cos-similar to eval distribution
+    ("gelu281",   GELU281,                                   None),  # GATE SNAPSHOT BUFFER: ring buffer stores per-channel gate vectors; pass-2 replays stored_gate^(1+κ)
+    ("gelu282",   GELU282,                                   None),  # NOVELTY DEPLETION: per-channel depl accumulates ReLU(gate-1); depl_gate=exp(-U·depl) suppresses previously-novel channels
+    ("gelu283",   GELU283,                                   None),  # GRAD-THROUGH-EMA: gelu211 with differentiable EMA updates; gradient flows through d to logit_decay
+    ("gelu284",   GELU284,                                   None),  # MULTI-PROTOTYPE: K=8 learned prototype vectors; gate=exp(-w*max_k cos(out_m, P_k)); fully stateless
+    ("gelu285",   GELU285,                                   None),  # PER-CHANNEL SIGMOID: w_d*z_d+b_d per channel; batch z-score; no EMA; fully stateless
+    ("gelu286",   GELU286,                                   None),  # FILM MLP GATE: 2-layer MLP(batch_mean,std) → per-channel sigmoid; non-linear distributional gating
+    ("gelu287",   GELU287,                                   None),  # CAUSAL TOKEN GATE: per-token gate using causal cumulative mean; gate_t=exp(-w*cos(out_t, mean(out_0..t-1)))
+    ("gelu288",   GELU288,                                   None),  # BILINEAR GATE: low-rank UV^T; gate=sigmoid(-w*(in@U)·(out@V)/r+b); input×output cross-space
+    ("gelu289",   GELU289,                                   None),  # PROTO ATTENTION: soft attention over K=8 prototypes → per-channel gate blend; more expressive than gelu284
+    ("gelu290",   GELU290,                                   None),  # VARIANCE NOVELTY: per-channel var vs learned baseline; eval-EMA baseline adapts → sequential Δ>0
+    ("gelu291",   GELU291,                                   None),  # GRAD-THROUGH-DEPL: gelu282 with differentiable depletion; gradient coordinates gate_raw and depl for better Δ
+    ("gelu292",   GELU292,                                   None),  # TRAINED-INIT EVAL EMA: gelu211 + eval EMA warm-started from trained prototype; pass-1 gate fires immediately
+    ("gelu293",   GELU293,                                   None),  # DUAL-TIMESCALE EMA: fast(d≈0.5) vs slow(d≈0.99) EMA contrast drives gate; Δ>0 as fast→slow across passes
+    ("gelu294",   GELU294,                                   None),  # DIAGONAL GRU: per-channel GRU hidden state h accumulates gate history; GRU learns depletion pattern
+    ("gelu295",   GELU295,                                   None),  # FIRING RATE HOMEOSTASIS: suppress over-active (rate>target), amplify under-active (rate<target)
+    ("gelu296",   GELU296,                                   None),  # BLOCK-WISE DECAY: 8 independent decay rates for D//8 channel blocks; richer temporal dynamics
+    ("gelu297",   GELU297,                                   None),  # POSITIONAL DISCOUNT: gelu211 × exp(-λ*t/T); later sequence positions suppressed; λ learnable
+    ("gelu298",   GELU298,                                   None),  # LEARNABLE BYPASS: output=α*(gated)+(1-α)*raw; per-channel α trained to disable gate where unhelpful
+    ("gelu299",   GELU299,                                   None),  # BIDIRECTIONAL DEPLETION: depl_amp suppresses amplified; depl_sup rebounds suppressed; Δ>0
+    ("gelu300",   GELU300,                                   None),  # BATCH DELTA GATE: gate on batch-to-batch change in output mean; rising→amplify, falling→suppress
+    ("gelu301",   GELU301,                                   None),  # INPUT POWER GATE: per-channel L2-power vs learned baseline; log-ratio z-score; power-EMA adapts
+    ("gelu302",   GELU302,                                   None),  # SPARSE TOP-K: only top-25% novel channels gated; straight-through top-K; focuses habituation signal
+    ("gelu303",   GELU303,                                   None),  # SIMPLIFIED gelu211: no cosine gate; asym-in × sym-out only; 6 params; tests if gate_cos adds value
+    ("gelu304",   GELU304,                                   None),  # ASYM×ASYM: both input AND output use asymmetric push-pull gate; 8 params; more selective
+    ("gelu305",   GELU305,                                   None),  # DIFFERENTIABLE DECAY: logit_decay gets gradient via one-step lookahead z-score mean; same 7 params
+    ("gelu306",   GELU306,                                   None),  # STATIC NORMALIZATION: no EMA state; fully differentiable per-channel μ/σ learned by backprop; 4D+5 params
+    ("gelu307",   GELU307,                                   None),  # TRILINEAR CROSS GATE: gelu211 + z_in*z_out conjunction term; 9 params; conjunctive novelty
+    ("gelu308",   GELU308,                                   None),  # LOG-SPACE ADDITIVE: gates combined as sum in log-space; independent gradient per mode; 7 params
+    ("gelu309",   GELU309,                                   None),  # PER-CHANNEL TAU: each channel learns own cosine sensitivity τ_d; D+6 params; differentiable τ
+    ("gelu310",   GELU310,                                   None),  # MIXTURE GATE: softmax blend of log(gate_in)+log(gate_out)+log(gate_cos)+identity; 11 params
+    ("gelu311",   GELU311,                                   None),  # LOG-POWER GATE: log(power/ema_power) as novelty signal; energy-based, direction-agnostic; 4 params
+    ("gelu312",   GELU312,                                   None),  # HEBBIAN CO-ACTIVATION: low-rank r=8 context projection; agreement = x * (x@V@Vᵀ); grad to V
+    ("gelu313",   GELU313,                                   None),  # BATCH-STATS DIFFERENTIABLE: no EMA; z_in/z_out from current batch mean/std; fully differentiable; 5 params
+    ("gelu314",   GELU314,                                   None),  # SYMMETRIC INPUT (TIED β): β_up=β_dn tied → single β; simplified gelu211; tests if asymmetry helps; 6 params
+    ("gelu315",   GELU315,                                   None),  # VELOCITY GATE: two-timescale EMA (fast d≈0.5, slow d≈0.99); gates on trend direction not static level
+    ("gelu316",   GELU316,                                   None),  # PER-CHANNEL β: β_up_d (D,) and β_dn_d (D,) per-channel asymmetry; more expressive; 2D+5 params
+    ("gelu317",   GELU317,                                   None),  # ABSOLUTE DEVIATION: |z_in| based gate; amplifies ALL deviations regardless of sign; never suppresses; 6 params
+    ("gelu318",   GELU318,                                   None),  # COMPOUND γ: separate γ_up and γ_dn sharpness per arm; 8 params; independent tanh steepness
+    ("gelu319",   GELU319,                                   None),  # LINEAR MIX Z: single gate on z_in + α*z_out; α learnable; reduces to gelu190 when α→0; 6 params
+    ("gelu320",   GELU320,                                   None),  # EXP-SHAPE GATE: exp(β*tanh(γ*z)) vs 1+β*tanh; scaling gradient, natural boundedness; 7 params
+    ("gelu321",   GELU321,                                   None),  # SIGMOID GATE: 2σ(β*z) shape; smooth (0,2) range; no clamp; never-zero gradient; 6 params
+    ("gelu322",   GELU322,                                   None),  # BATCH COSINE GATE: cosine gate vs current batch mean direction (not EMA); τ gets true gradient; 7 params
+    ("gelu323",   GELU323,                                   None),  # FULL BATCH-STATS: gelu211 arch with ALL stats from current batch; no EMA; fully differentiable; 6 params
+    ("gelu324",   GELU324,                                   None),  # DIAGONAL GLU: GELU(x)*2σ(w_d*x_d+b_d); fully differentiable; no state; 2D params
+    ("gelu325",   GELU325,                                   None),  # X-GRADIENT Z-SCORE: gelu211 with x.detach() removed; β/γ get real gradient through z-score; 7 params
+    ("gelu326",   GELU326,                                   None),  # COSINE-ONLY ABLATION: output*gate_cos only; no z-score gates; minimal 2-param stateful gate
+    ("gelu327",   GELU327,                                   None),  # LEARNED EMA INIT: μ₀_in/out as nn.Parameters for warm-start; 7 scalars + 5D vectors
+    ("gelu328",   GELU328,                                   None),  # MULTI-SCALE Z-MIX: z_fast+α*z_slow with learned α; two EMA timescales; 10 params
+    ("gelu329",   GELU329,                                   None),  # GATE LAYER-NORM: normalize combined gate_vec to per-token mean=1; removes global scaling; 7 params
+    ("gelu330",   GELU330,                                   None),  # SHARED MLP GATE: small 2-layer MLP maps [z_in,z_out]→gate; learns optimal gate shape; 19 params
+    ("gelu331",   GELU331,                                   None),  # SQUARED Z-SCORE: 1+β*tanh(γ*z²); responds to deviation magnitude not sign; gate≥1 always; 6 params
+    ("gelu332",   GELU332,                                   None),  # ASYM OUTPUT CLAMP: different clamp bounds for positive/negative z_out; 9 params
+    ("gelu333",   GELU333,                                   None),  # SYMMETRIC SIGMOID: 2σ(β_in*z_in)*2σ(β_out*z_out)*cos; clean 4-param baseline
+    ("gelu334",   GELU334,                                   None),  # INPUT SIGMOID ONLY: gate_in*cos no output gate; 3-param ablation
+    ("gelu335",   GELU335,                                   None),  # OUTPUT SIGMOID ONLY: gate_out*cos no input gate; 3-param cross-ablation
+    ("gelu336",   GELU336,                                   None),  # SHARED BETA: single β for both in+out sigmoid gates; ultra-minimal 3-param
+    ("gelu337",   GELU337,                                   None),  # SIGMOID+DEPLETION: gelu321 + per-channel depletion to prevent dominance; 8 params
+    ("gelu338",   GELU338,                                   None),  # MAD ROBUST: MAD instead of variance for z-score normalization; 4 params
+    ("gelu339",   GELU339,                                   None),  # CO-NOVELTY: 2σ(β*z_in*z_out) joint gate; filters inconsistency; 3 params
+    ("gelu340",   GELU340,                                   None),  # LOG-DEVIATION: sign(z)*log1p(|z|) compressed z-score; gradient alive for outliers; 4 params
+    ("gelu341",   GELU341,                                   None),  # ADAPTIVE-TAU: τ_eff=τ*(1+scale*std(cos)) batch-calibrated cosine; 5 params
+    ("gelu342",   GELU342,                                   None),  # PRE+POST GATE: gate x before GELU AND out after; soft routing into nonlinearity; 4 params
 ]
 
 
