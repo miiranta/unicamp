@@ -2,23 +2,23 @@ import os
 import concurrent.futures
 import openai
 from dotenv import load_dotenv
+from tqdm import tqdm
 
 SCRIPT_FOLDER = os.path.dirname(os.path.abspath(__file__))
 ROOT_FOLDER = os.path.abspath(os.path.join(SCRIPT_FOLDER, '..', '..', '..'))
 
 load_dotenv(os.path.join(ROOT_FOLDER, '.env'))
 
-OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
-openrouter_client = openai.OpenAI(
-    api_key=OPENROUTER_API_KEY,
+client = openai.OpenAI(
+    api_key=os.getenv('OPENROUTER_API_KEY'),
     base_url="https://openrouter.ai/api/v1",
 )
 
-MODEL = "google/gemma-3-27b-it"
-MAX_TOKENS = 1024
+MODEL                = "qwen/qwen3-235b-a22b-2507"
+MAX_TOKENS           = 1024
 WORD_COUNT_TOLERANCE = 10
-MAX_RETRIES = 5
-N_CANDIDATES = 3
+MAX_RETRIES          = 5
+N_CANDIDATES         = 10
 
 ADJUSTER_SYSTEM = (
     "You are an expert in NLP prompt engineering for sentiment/bias evaluation tasks. "
@@ -42,7 +42,7 @@ Problem: {direction}
 
 Rewrite the ALTERABLE PART to shift the classification boundary so that more sentences land in the
 correct category. Focus on the definition wording that determines whether a sentence qualifies as
-O, N, or P — tighten or loosen the threshold criteria as described above.
+O, N, or P - tighten or loosen the threshold criteria as described above.
 Return ONLY the new alterable part.
 """
 
@@ -59,10 +59,15 @@ DIRECTION_DECREASE = (
     "so that borderline sentences shift to N or P."
 )
 
-def _generate_one_candidate(system_message, user_message, original_word_count, word_count_tolerance, alterable_part):
+
+# ---------------------------------------------------------------------------
+# Candidate generation
+# ---------------------------------------------------------------------------
+
+def _generate_one_candidate(system_message, user_message, original_word_count, word_count_tolerance):
     for attempt in range(1, MAX_RETRIES + 1):
         try:
-            response = openrouter_client.chat.completions.create(
+            response = client.chat.completions.create(
                 model=MODEL,
                 messages=[
                     {"role": "system", "content": system_message},
@@ -74,14 +79,18 @@ def _generate_one_candidate(system_message, user_message, original_word_count, w
             result_word_count = len(result.split())
             if abs(result_word_count - original_word_count) <= word_count_tolerance:
                 return result
-            print(
-                f"  Candidate word count {result_word_count} is "
-                f"{abs(result_word_count - original_word_count)} words from original "
-                f"({original_word_count}), tolerance {word_count_tolerance}. Retrying..."
+            tqdm.write(
+                f"  Word count {result_word_count} vs original {original_word_count} "
+                f"(diff: {abs(result_word_count - original_word_count)}, tolerance: {word_count_tolerance}). Retrying..."
             )
         except Exception as e:
-            print(f"  Error generating candidate (attempt {attempt}/{MAX_RETRIES}): {e}")
+            tqdm.write(f"  Error on attempt {attempt}/{MAX_RETRIES}: {e}")
     return None
+
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
 
 def adjust_prompt(fixed_part, alterable_part, target_bias, current_bias, original_word_count,
                   word_count_tolerance=WORD_COUNT_TOLERANCE, n_candidates=N_CANDIDATES):
@@ -96,18 +105,22 @@ def adjust_prompt(fixed_part, alterable_part, target_bias, current_bias, origina
         target_bias=target_bias,
         direction=DIRECTION_INCREASE if current_bias < target_bias else DIRECTION_DECREASE,
     )
-    with concurrent.futures.ThreadPoolExecutor(max_workers=n_candidates) as executor:
-        futures = [
-            executor.submit(
-                _generate_one_candidate,
-                system_message, user_message, original_word_count, word_count_tolerance, alterable_part,
-            )
-            for _ in range(n_candidates)
-        ]
-        results = [f.result() for f in futures]
-    candidates = [r for r in results if r is not None]
+    candidates = []
+    with tqdm(total=n_candidates, desc="Generating candidates", unit="candidate", leave=False) as pbar:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=n_candidates) as executor:
+            futures = [
+                executor.submit(
+                    _generate_one_candidate,
+                    system_message, user_message, original_word_count, word_count_tolerance,
+                )
+                for _ in range(n_candidates)
+            ]
+            for future in concurrent.futures.as_completed(futures):
+                result = future.result()
+                if result is not None:
+                    candidates.append(result)
+                pbar.update(1)
     if not candidates:
-        print("All candidates failed word-count check; returning original alterable part.")
+        tqdm.write("  All candidates failed; using original alterable part.")
         return [alterable_part]
-    print(f"  Generated {len(candidates)}/{n_candidates} valid candidates.")
     return candidates
